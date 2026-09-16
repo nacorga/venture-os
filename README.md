@@ -19,13 +19,13 @@ The public flow above is intentionally simple. Internally, decisions branch: `PR
 Requirements:
 
 - Claude Code
-- Node.js 20+
+- Node.js 24+
 - Git
 
 ```bash
 git clone https://github.com/nacorga/venture-os.git
 cd venture-os
-npm install
+npm ci
 npm run repo:check
 npm run venture:new -- my-venture "A B2B SaaS that helps small teams detect costly workflow anomalies before they become incidents"
 claude
@@ -135,7 +135,7 @@ If a hosted version would remove meaningful workflow pain for you, use the **Wor
 
 ## Contributing
 
-The smallest useful contribution is often a new Case Library entry. CI validates repository structure, public `case.yaml` files, the venture onboarding scaffold, and the bridge into the eval harness.
+The smallest useful contribution is often a new Case Library entry. CI validates repository structure, public `case.yaml` files, the deterministic contract tests, the venture onboarding scaffold, and the bridge into the eval harness.
 
 Start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
@@ -150,6 +150,7 @@ Start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - `evals/reference/` — evaluator-only expectations for the scored public regression subset.
 - `evals/runs/` — generated benchmark executions.
 - `scripts/` — deterministic mechanics; business judgment remains with agents and humans.
+- `test/` — deterministic regression tests for repository contracts.
 
 ## Design principles
 
