@@ -14,8 +14,11 @@ function fail(message) {
 
 const expected = [
   'CLAUDE.md',
+  '.nvmrc',
+  'package-lock.json',
   '.claude/agents',
   '.claude/skills',
+  '.github/dependabot.yml',
   '.github/workflows/validate.yml',
   '.github/ISSUE_TEMPLATE/bug.yml',
   '.github/ISSUE_TEMPLATE/case-contribution.yml',
@@ -38,7 +41,8 @@ const expected = [
   'docs/PUBLICATION.md',
   'scripts/case-utils.mjs',
   'scripts/new-case.mjs',
-  'scripts/validate-case.mjs'
+  'scripts/validate-case.mjs',
+  'test/contracts.test.mjs'
 ];
 for (const p of expected) if (!fs.existsSync(path.join(root, p))) fail(`Missing ${p}`);
 
@@ -64,6 +68,12 @@ if (fs.existsSync(readmePath)) {
   if (readme.includes('or a reframed thesis')) {
     fail('README.md must not describe thesis reframing as a fourth gate outcome');
   }
+  if (!readme.includes('Node.js 24+')) {
+    fail('README.md must document Node.js 24+ as the supported runtime');
+  }
+  if (!readme.includes('npm ci')) {
+    fail('README.md must use the reproducible npm ci install path');
+  }
 }
 
 const caseSchemaPath = path.join(root, 'framework', 'schemas', 'case.schema.json');
@@ -86,17 +96,64 @@ if (fs.existsSync(caseSchemaPath)) {
 }
 
 const packagePath = path.join(root, 'package.json');
+let pkg = null;
 if (fs.existsSync(packagePath)) {
   try {
-    const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    if (pkg.scripts?.test !== 'node --test') fail('package.json must expose the deterministic node --test suite');
     if (pkg.scripts?.['case:new'] !== 'node scripts/new-case.mjs') fail('package.json missing canonical case:new script');
     if (pkg.scripts?.['case:validate'] !== 'node scripts/validate-case.mjs') fail('package.json missing canonical case:validate script');
+    if (pkg.engines?.node !== '>=24') fail('package.json must require Node.js >=24');
     for (const dependency of ['ajv', 'ajv-formats', 'yaml']) {
       if (!pkg.dependencies?.[dependency]) fail(`package.json missing case tooling dependency: ${dependency}`);
     }
   } catch (error) {
     fail(`Invalid package.json: ${error.message}`);
   }
+}
+
+const lockPath = path.join(root, 'package-lock.json');
+if (fs.existsSync(lockPath) && pkg) {
+  try {
+    const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+    if (lock.lockfileVersion !== 3) fail('package-lock.json must use lockfileVersion 3');
+    const rootPackage = lock.packages?.[''];
+    if (!rootPackage) fail('package-lock.json missing root package metadata');
+    else {
+      if (rootPackage.version !== pkg.version) fail('package-lock.json root version must match package.json');
+      if (rootPackage.engines?.node !== pkg.engines?.node) fail('package-lock.json Node engine must match package.json');
+      for (const dependency of ['ajv', 'ajv-formats', 'yaml']) {
+        if (rootPackage.dependencies?.[dependency] !== pkg.dependencies?.[dependency]) {
+          fail(`package-lock.json dependency ${dependency} must match package.json`);
+        }
+      }
+    }
+  } catch (error) {
+    fail(`Invalid package-lock.json: ${error.message}`);
+  }
+}
+
+const nvmrcPath = path.join(root, '.nvmrc');
+if (fs.existsSync(nvmrcPath) && fs.readFileSync(nvmrcPath, 'utf8').trim() !== '24') {
+  fail('.nvmrc must pin Node 24');
+}
+
+const workflowPath = path.join(root, '.github', 'workflows', 'validate.yml');
+if (fs.existsSync(workflowPath)) {
+  const workflow = fs.readFileSync(workflowPath, 'utf8');
+  if (!workflow.includes('node-version: 24')) fail('Validate workflow must run on Node 24');
+  if (!workflow.includes('npm ci --ignore-scripts --no-audit --no-fund')) fail('Validate workflow must install from package-lock with npm ci');
+  if (!workflow.includes('run: npm test')) fail('Validate workflow must run deterministic tests');
+  if (workflow.includes('npm install --no-package-lock')) fail('Validate workflow must not bypass package-lock');
+}
+
+const dependabotPath = path.join(root, '.github', 'dependabot.yml');
+if (fs.existsSync(dependabotPath)) {
+  const dependabot = fs.readFileSync(dependabotPath, 'utf8');
+  for (const ecosystem of ['npm', 'github-actions']) {
+    if (!dependabot.includes(`package-ecosystem: ${ecosystem}`)) fail(`Dependabot must cover ${ecosystem}`);
+  }
+  if (!dependabot.includes('interval: weekly')) fail('Dependabot updates should run weekly');
 }
 
 const publicCaseFiles = listCaseFiles();
