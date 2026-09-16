@@ -6,12 +6,11 @@ The easiest contribution is a new public case for the Case Library. A case is a 
 
 ## Before you start
 
-Use Node.js 24 or newer. The repository includes `.nvmrc` for `nvm use`.
+Use Node.js 24 or newer. If you use nvm, the repository includes `.nvmrc` so `nvm use` selects the supported major version.
 
 Install dependencies from the committed lockfile and run the repository checks:
 
 ```bash
-nvm use
 npm ci
 npm test
 npm run repo:check
