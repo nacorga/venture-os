@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Evidence",
+  "type": "object",
+  "required": ["id", "type", "statement", "direction", "strength", "assumption_ids"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^E[0-9]{3,}$" },
+    "type": {
+      "enum": ["first_party_behavioral", "first_party_qualitative", "primary_external", "secondary_external", "community_review", "other"]
+    },
+    "statement": { "type": "string" },
+    "source": { "type": ["string", "null"] },
+    "observed_at": { "type": ["string", "null"] },
+    "direction": { "enum": ["supports", "contradicts", "mixed", "neutral"] },
+    "strength": { "enum": ["strong", "medium", "weak", "unknown"] },
+    "segment": { "type": ["string", "null"] },
+    "transport_justification": { "type": ["string", "null"] },
+    "assumption_ids": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^A[0-9]{3,}$" }
+    },
+    "superseded_by": { "type": ["string", "null"], "pattern": "^E[0-9]{3,}$" },
+    "derivation": {
+      "type": "object",
+      "required": ["model", "formula_or_method", "applicability_conditions", "independently_verified"],
+      "properties": {
+        "model": { "type": "string" },
+        "formula_or_method": { "type": "string" },
+        "inputs": { "type": ["object", "array", "string", "null"] },
+        "applicability_conditions": { "type": ["string", "array"] },
+        "independently_verified": { "type": "boolean" },
+        "verification_note": { "type": ["string", "null"] },
+        "sensitivity_notes": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    }
+  },
+  "allOf": [
+    {
+      "if": { "required": ["derivation"] },
+      "then": { "required": ["segment"] }
+    }
+  ],
+  "additionalProperties": true
+}

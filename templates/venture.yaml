@@ -1,0 +1,82 @@
+version: 2
+name: ""
+slug: ""
+created_at: ""
+updated_at: ""
+stage: concept
+
+thesis:
+  problem: ""
+  icp: ""
+  solution: ""
+  business_model: ""
+  distribution: ""
+
+alternatives: []
+
+assumptions: []
+# Example:
+# - id: A001
+#   statement: "Target users experience this problem at least monthly"
+#   category: problem
+#   criticality: critical
+#   status: unknown
+#   segment: "primary-icp"
+#   evidence_ids: []
+
+risks: []
+
+evidence_index: []
+# Example:
+# - id: E001
+#   type: primary_external
+#   statement: "..."
+#   source: "https://..."
+#   observed_at: "2026-09-16"
+#   direction: supports
+#   strength: medium
+#   segment: "primary-icp"
+#   transport_justification: null
+#   assumption_ids: [A001]
+
+latest_decision:
+  id: null
+  outcome: null
+  path: null
+
+blocking_assumptions: []
+blocking_deferrals: []
+# For TEST, the next_action assumption is the active blocker.
+# Any additional blocking assumption must be explicitly deferred:
+# - assumption_id: A002
+#   reason: "Resolve only if A001 succeeds"
+#   until: "After experiment X001 passes"
+
+do_not_build: []
+# - id: DNB001
+#   statement: "Do not build the dashboard"
+#   reason: "Alert value is not proven"
+#   evidence_ids: [E001]
+
+next_action:
+  id: N001
+  type: normalize
+  assumption_id: null
+  instruction: "Normalize the venture and extract critical assumptions."
+  success_signal: null
+  failure_signal: null
+  depends_on: []
+# Version 2 stores only the current action. Keep depends_on empty; historical N###
+# dependencies are not representable until an action-history model exists.
+
+revisit_when: []
+# - id: T001
+#   condition: "A reliable new distribution channel becomes available"
+#   check: "Verify with observed first-party acquisition data"
+
+reopen_combination_rule: null
+# For PARK decisions, use stable trigger IDs rather than positional references:
+# reopen_combination_rule:
+#   all_of: [T001]
+#   any_of: [T002, T003]
+#   note: "At least T001 plus one demand trigger is required."

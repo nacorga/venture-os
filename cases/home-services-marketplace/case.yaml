@@ -1,0 +1,12 @@
+schema_version: 1
+id: home-services-marketplace
+title: Local home services marketplace
+statement: A marketplace connecting homeowners with vetted local professionals for small home repairs and maintenance jobs.
+categories:
+  - marketplace
+tags:
+  - home-services
+  - local-market
+  - trust-safety
+provenance:
+  type: synthetic

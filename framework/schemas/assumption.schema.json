@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Assumption",
+  "type": "object",
+  "required": ["id", "statement", "category", "criticality", "status", "evidence_ids"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^A[0-9]{3,}$" },
+    "statement": { "type": "string" },
+    "category": {
+      "enum": ["problem", "customer", "frequency", "urgency", "willingness_to_pay", "distribution", "competition", "solution", "retention", "economics", "regulatory", "operational", "other"]
+    },
+    "criticality": { "enum": ["critical", "high", "medium", "low"] },
+    "status": { "enum": ["unknown", "supported", "contradicted", "mixed"] },
+    "segment": { "type": ["string", "null"] },
+    "evidence_ids": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^E[0-9]{3,}$" }
+    }
+  },
+  "additionalProperties": true
+}

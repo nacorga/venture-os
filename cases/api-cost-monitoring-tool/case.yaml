@@ -1,0 +1,12 @@
+schema_version: 1
+id: api-cost-monitoring-tool
+title: API cost monitoring for engineering teams
+statement: A developer tool that monitors third-party API spend, detects unusual cost changes, and alerts engineering teams.
+categories:
+  - developer-tool
+tags:
+  - api-costs
+  - monitoring
+  - engineering
+provenance:
+  type: synthetic

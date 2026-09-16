@@ -1,0 +1,23 @@
+{
+  "name": "venture-os",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "venture:new": "node scripts/new-venture.mjs",
+    "venture:check": "node scripts/check-venture.mjs",
+    "evidence:check": "node scripts/check-evidence-consistency.mjs",
+    "eval:new": "node scripts/new-eval-run.mjs",
+    "eval:freeze": "node scripts/freeze-eval-run.mjs",
+    "eval:verify": "node scripts/verify-eval-run.mjs",
+    "case:new": "node scripts/new-case.mjs",
+    "case:validate": "node scripts/validate-case.mjs",
+    "repo:check": "node scripts/check-repo.mjs"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "yaml": "^2.9.1"
+  }
+}

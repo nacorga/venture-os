@@ -1,0 +1,57 @@
+name: Workflow feedback
+description: Share where Venture OS helped, confused, or blocked you
+title: "[Feedback]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Usage feedback is more useful than praise. Please do not include private venture data or customer information.
+  - type: dropdown
+    id: furthest-stage
+    attributes:
+      label: Furthest stage reached
+      options:
+        - Clone / install only
+        - Venture created
+        - Research completed
+        - Challenge completed
+        - Decision reached
+        - Experiment designed
+        - Experiment executed
+        - Learning ingested
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: What were you trying to decide or accomplish?
+      description: Keep private business details generalized if needed.
+    validations:
+      required: true
+  - type: textarea
+    id: useful
+    attributes:
+      label: What changed because of the workflow?
+      description: For example, a changed assumption, decision, experiment, or next action.
+  - type: textarea
+    id: friction
+    attributes:
+      label: Where did you get stuck or lose confidence?
+    validations:
+      required: true
+  - type: dropdown
+    id: hosted
+    attributes:
+      label: Would a hosted version solve meaningful workflow pain for you?
+      options:
+        - Yes
+        - Maybe
+        - No
+        - Not sure yet
+    validations:
+      required: true
+  - type: textarea
+    id: hosted-why
+    attributes:
+      label: If yes or maybe, what would the hosted version need to remove?
+      description: Focus on workflow pain, not a feature wishlist.

@@ -1,0 +1,35 @@
+version: 1
+id: "X001"
+name: ""
+status: designed
+created_at: ""
+
+primary_assumption_id: ""
+why_critical: ""
+
+target:
+  description: ""
+  sample_goal: null
+
+procedure: []
+assets: []
+
+budget:
+  max_days: null
+  max_cash: null
+  currency: EUR
+
+signals:
+  success: []
+  failure: []
+  ambiguous: []
+
+decision_rules:
+  on_success: ""
+  on_failure: ""
+  on_ambiguous: ""
+
+results:
+  observations: []
+  evidence_ids: []
+  completed_at: null

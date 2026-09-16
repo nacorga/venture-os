@@ -1,0 +1,11 @@
+name: custom-pet-gift-boxes
+expected_uncertainties:
+  - gross margin after personalization, packaging, fulfillment, and returns
+  - which customization attributes actually increase willingness to pay
+  - supplier reliability, minimum quantities, and fulfillment exceptions
+  - customer acquisition cost and repeat purchase frequency
+  - seasonality and gift-driven demand concentration
+anti_patterns:
+  - building a complex configurator before proving paid demand
+  - treating supplier catalog breadth as evidence of customer demand
+  - ignoring operational exception costs when estimating margin

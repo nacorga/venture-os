@@ -1,0 +1,48 @@
+name: Case contribution
+description: Propose a public Case Library entry or ask for help shaping one
+title: "[Case]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The preferred contribution path is a pull request following CONTRIBUTING.md. Use this form when you want to propose a case first or need help shaping it.
+  - type: input
+    id: title
+    attributes:
+      label: Case title
+      placeholder: Invoice reconciliation for small finance teams
+    validations:
+      required: true
+  - type: textarea
+    id: statement
+    attributes:
+      label: Case statement
+      description: Describe the starting venture or problem without expected conclusions, gates, scores, or evaluator hints.
+    validations:
+      required: true
+  - type: dropdown
+    id: provenance
+    attributes:
+      label: Provenance
+      options:
+        - synthetic
+        - anonymized-real
+        - public-real
+    validations:
+      required: true
+  - type: textarea
+    id: coverage
+    attributes:
+      label: What new coverage does this add?
+      description: Explain how it differs materially from existing Case Library entries.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Publication safety
+      options:
+        - label: I have not included secrets, customer data, confidential research, proprietary metrics, or identifying private details.
+          required: true
+        - label: I understand that anonymized-real cases still require human review for re-identification risk.
+          required: true

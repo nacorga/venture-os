@@ -1,0 +1,12 @@
+schema_version: 1
+id: inventory-monitoring-saas
+title: Inventory monitoring for small retailers
+statement: A B2B SaaS for small retailers that detects stock anomalies and recommends replenishment actions.
+categories:
+  - b2b-saas
+tags:
+  - inventory
+  - retail
+  - anomaly-detection
+provenance:
+  type: synthetic

@@ -1,0 +1,11 @@
+name: language-learning-membership
+expected_uncertainties:
+  - retention after the initial motivation period
+  - scheduling, instructor supply, and group utilization economics
+  - differentiation from tutors, cohort courses, and self-serve learning apps
+  - customer acquisition cost relative to subscription lifetime value
+  - willingness to pay for live accountability versus free or low-cost alternatives
+anti_patterns:
+  - building a large content library before validating retention and paid demand
+  - using the global language-learning market as direct validation
+  - treating free trial participation as equivalent to recurring willingness to pay

@@ -1,0 +1,11 @@
+name: inventory-monitoring-saas
+expected_uncertainties:
+  - frequency and economic cost of inventory anomalies for the target segment
+  - data access and integration reliability across retailer systems
+  - differentiation from inventory, ERP, and forecasting tools
+  - trust in recommendations when data is incomplete or noisy
+  - willingness to pay by retailer size and operational complexity
+anti_patterns:
+  - expanding into a full inventory or ERP suite before validating the alerting wedge
+  - using retail software market size as direct demand evidence
+  - assuming technically correct alerts automatically create operational value

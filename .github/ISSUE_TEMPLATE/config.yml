@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Quickstart
+    url: https://github.com/nacorga/venture-os/blob/main/docs/QUICKSTART.md
+    about: Start here if you are trying Venture OS for the first time.
+  - name: Contribution guide
+    url: https://github.com/nacorga/venture-os/blob/main/CONTRIBUTING.md
+    about: Read this before contributing cases or framework changes.

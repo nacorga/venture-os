@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a reproducible problem in Venture OS
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Do not include secrets, customer data, private venture artifacts, or confidential research.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem and the command or workflow you were using.
+      placeholder: I ran ... and observed ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest sequence that reproduces the issue.
+      placeholder: |
+        1. npm ...
+        2. /venture-...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: v24.x
+  - type: input
+    id: claude
+    attributes:
+      label: Claude Code version
+      placeholder: Optional
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Workflow stage
+      options:
+        - Setup / install
+        - Venture creation
+        - Research
+        - Challenge
+        - Decision
+        - Positioning
+        - Experiment
+        - Learning
+        - Case Library
+        - Eval harness
+        - Other
+    validations:
+      required: true

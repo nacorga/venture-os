@@ -1,0 +1,40 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-package-lock --ignore-scripts --no-audit --no-fund
+
+      - name: Check repository structure
+        run: npm run repo:check
+
+      - name: Validate Case Library
+        run: npm run case:validate
+
+      - name: Smoke venture onboarding scaffold
+        run: |
+          npm run venture:new -- onboarding-smoke "A B2B SaaS that helps small teams detect costly workflow anomalies before they become incidents"
+          npm run venture:check -- onboarding-smoke
+          rm -rf ventures/onboarding-smoke
+
+      - name: Smoke eval input bridge
+        run: npm run eval:new -- inventory-monitoring-saas ci-smoke

@@ -1,0 +1,11 @@
+name: home-services-marketplace
+expected_uncertainties:
+  - local supply-demand liquidity and geographic density
+  - trust, safety, vetting, and service-quality mechanisms
+  - homeowner acquisition cost relative to booking frequency and take rate
+  - professional incentives and supply retention
+  - disintermediation after the first successful job
+anti_patterns:
+  - launching broadly before proving one dense local market
+  - treating the size of home services as marketplace validation
+  - building complex marketplace infrastructure before proving repeatable matching

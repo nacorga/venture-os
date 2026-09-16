@@ -1,0 +1,13 @@
+schema_version: 1
+id: custom-pet-gift-boxes
+title: Personalized gift boxes for pet owners
+statement: Personalized gift boxes for pet owners assembled from customizable products sourced from external suppliers.
+categories:
+  - ecommerce
+  - physical-product
+tags:
+  - pets
+  - personalization
+  - gifts
+provenance:
+  type: synthetic

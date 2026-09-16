@@ -1,0 +1,12 @@
+schema_version: 1
+id: language-learning-membership
+title: Live language learning membership
+statement: A consumer subscription combining weekly live small-group language sessions with adaptive practice between classes.
+categories:
+  - consumer-subscription
+tags:
+  - language-learning
+  - live-learning
+  - adaptive-practice
+provenance:
+  type: synthetic
