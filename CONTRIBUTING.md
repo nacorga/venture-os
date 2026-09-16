@@ -6,10 +6,13 @@ The easiest contribution is a new public case for the Case Library. A case is a 
 
 ## Before you start
 
-Install dependencies and run the repository checks:
+Use Node.js 24 or newer. If you use nvm, the repository includes `.nvmrc` so `nvm use` selects the supported major version.
+
+Install dependencies from the committed lockfile and run the repository checks:
 
 ```bash
-npm install --no-package-lock
+npm ci
+npm test
 npm run repo:check
 npm run case:validate
 ```
@@ -71,12 +74,13 @@ Do not contribute customer data, private company information, proprietary metric
 Run:
 
 ```bash
+npm test
 npm run case:validate -- <id>
 npm run case:validate
 npm run repo:check
 ```
 
-All three commands must pass before opening a pull request.
+All commands must pass before opening a pull request.
 
 ## Benchmark references are maintainer-owned
 

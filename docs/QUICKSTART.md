@@ -2,14 +2,14 @@
 
 Goal: go from a clean clone to your first auditable venture decision with as little setup friction as possible.
 
-Venture OS is currently Claude Code-first. This quickstart assumes Claude Code is already installed and authenticated.
+Venture OS is currently Claude Code-first. This quickstart assumes Claude Code is already installed and authenticated. Use Node.js 24 or newer; if you use nvm, the repository includes `.nvmrc` so `nvm use` selects the supported major version.
 
 ## 1. Clone and install
 
 ```bash
 git clone https://github.com/nacorga/venture-os.git
 cd venture-os
-npm install
+npm ci
 npm run repo:check
 ```
 

@@ -27,7 +27,7 @@ The directory name must equal `id`.
 
 ## Create a case
 
-Install dependencies once with `npm install`, then create a minimal valid case:
+Install dependencies once with `npm ci`, then create a minimal valid case:
 
 ```bash
 npm run case:new -- <id> "<title>" "<statement>" <category>

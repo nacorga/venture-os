@@ -2,7 +2,7 @@
 
 Status: **technical launch complete**. The remaining M3 gate is external usage by people who did not build Venture OS.
 
-This file records the first public-release gate so later work does not accidentally reopen already-completed launch tasks.
+This file records the public-release gate and post-launch hardening so later work does not accidentally reopen completed tasks or lose repository-governance requirements.
 
 ## Repository safety — complete
 
@@ -16,10 +16,11 @@ See `docs/PUBLICATION.md` for the ongoing repository boundary.
 
 ## Clean-checkout onboarding — complete
 
-Validated from a clean checkout with:
+Current clean-checkout validation uses the committed lockfile:
 
 ```bash
-npm install
+npm ci
+npm test
 npm run repo:check
 npm run case:validate
 npm run venture:new -- onboarding-smoke "A B2B SaaS that helps small teams detect costly workflow anomalies before they become incidents"
@@ -31,6 +32,28 @@ npm run venture:check -- onboarding-smoke
 - [x] Claude Code project skills are the public workflow surface.
 - [x] CI is green on the public default branch.
 
+## Deterministic repository hardening — complete in v0.1.1 code
+
+- [x] Node.js 24 is the supported runtime and pinned through `.nvmrc`.
+- [x] `package-lock.json` is committed.
+- [x] CI installs with `npm ci` rather than resolving an unpinned dependency graph.
+- [x] Deterministic regression tests cover Case Library validation, venture creation, and eval freeze integrity.
+- [x] `repo:check` protects runtime, lockfile, CI, test, and Dependabot invariants.
+- [x] Dependabot checks npm and GitHub Actions weekly.
+
+## Repository governance — requires GitHub Settings
+
+These settings are intentionally not encoded as application behavior and must be configured on the repository:
+
+- [ ] Protect the default branch with an active ruleset.
+- [ ] Require pull requests before merging to `main`.
+- [ ] Require the `validate` status check and require the branch to be up to date.
+- [ ] Block force pushes and branch deletion on `main`.
+- [ ] Require linear history.
+- [ ] Use squash merge as the normal merge strategy and automatically delete merged head branches.
+- [ ] Configure the repository social preview image.
+- [ ] Review GitHub code-security settings: dependency graph, Dependabot alerts/security updates, secret scanning, and push protection where available.
+
 ## Community surface — complete
 
 - [x] Issues enabled.
@@ -41,13 +64,14 @@ npm run venture:check -- onboarding-smoke
 - [x] `CONTRIBUTING.md` linked from README.
 - [x] Privacy-first feedback policy linked from README.
 
-## Release — complete
+## Release
 
 - [x] Repository published from sanitized history.
 - [x] Public `v0.1.0` release created.
 - [x] README links and hero asset resolve from the public repository.
 - [x] CI run completed successfully on the public default branch after launch.
 - [x] Root commit author uses the GitHub `noreply` address rather than a personal email.
+- [ ] Publish `v0.1.1` after the hardening PR is merged and `main` CI is green.
 
 ## External user gate — in progress
 
@@ -71,7 +95,8 @@ Do not treat stars, forks, impressions, comments, or compliments as substitutes 
 
 M3 is complete only when:
 
-1. the technical launch remains healthy; and
-2. at least 10 external users have actually attempted the workflow without live guidance, with enough behavioral feedback to identify the main onboarding and decision-quality failure modes.
+1. the technical launch remains healthy;
+2. repository governance does not allow accidental bypass of the required validation path; and
+3. at least 10 external users have actually attempted the workflow without live guidance, with enough behavioral feedback to identify the main onboarding and decision-quality failure modes.
 
 Until then, avoid speculative product expansion. Fix demonstrated onboarding or decision-system failures first.
