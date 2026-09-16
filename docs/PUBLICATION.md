@@ -1,6 +1,8 @@
-# Public repository boundary
+# Public repository boundary and release policy
 
-Venture OS is intended to be safe to publish and useful without access to the author's private ventures.
+Venture OS is public and intended to remain safe to use without access to the author's private ventures or private benchmark history.
+
+The first public release (`v0.1.0`) was created from a sanitized root history. The earlier private development history is not part of the public repository.
 
 ## What may live in the public repository
 
@@ -8,33 +10,50 @@ Venture OS is intended to be safe to publish and useful without access to the au
 - generic agents and skills;
 - schemas and templates;
 - deterministic scripts;
-- synthetic examples and eval cases;
-- evaluator references for those synthetic cases;
+- synthetic examples and public Case Library inputs;
+- evaluator references for the maintainer-owned public regression subset;
+- generated public eval runs when intentionally retained;
 - documentation that applies to any user.
 
 ## What must stay outside
 
-- real venture names or identifying details;
+- real venture names or identifying details unless intentionally public;
 - customer or prospect information;
 - private research and interview material;
 - proprietary outcomes or commercial metrics;
 - private benchmark references derived from real projects;
 - credentials, tokens, private URLs, or personal data.
 
-Private benchmarks should be stored separately and executed against a pinned Venture OS commit. They act as a holdout suite and should not be visible to the agent during public benchmark development.
+Private benchmarks should remain in a separate repository or storage boundary and run against a pinned public Venture OS commit. They are holdouts and should not be visible to the agent during public benchmark development.
 
-## Publication gate
+## Ongoing publication rule
 
-**Do not change repository visibility to public solely because the current tree is clean.**
+A clean current tree is necessary but not sufficient when importing material from private work.
 
-This repository had a private development phase. Deleted files and old examples remain accessible through Git history after a visibility change. Before the first public release, publish from a sanitized history (for example, a fresh repository or a deliberately rewritten root history) and verify that no private development artifacts remain in reachable commits.
+Before adding a real or anonymized-real case, benchmark, research artifact, or other material derived from private work:
 
-Minimum pre-public checks:
+1. remove direct identifiers and unnecessary sensitive detail;
+2. verify that proprietary metrics, private URLs, credentials, and confidential research are absent;
+3. preserve enough context for the material to remain useful without making the source re-identifiable;
+4. require human review for `anonymized-real` cases;
+5. keep evaluator expectations separate from public case input;
+6. run the repository validation suite before merge.
 
-1. current tree contains only generic, publishable content;
-2. no secrets or private URLs exist in the current tree;
-3. historical commits have been sanitized or excluded from the public history;
-4. synthetic evals pass after genericization;
-5. README, license, and contribution surface describe a project usable by someone with no private context.
+Passing schema validation is not proof that material is safe to publish.
 
-The visibility switch belongs to a later release gate, not to ordinary feature work.
+See [`CASE_PUBLISHING.md`](CASE_PUBLISHING.md) for the intended assisted anonymization/publication boundary.
+
+## Release policy
+
+Normal releases now happen from the public repository.
+
+Before tagging a release:
+
+1. `npm run repo:check` passes;
+2. `npm run case:validate` passes;
+3. CI is green on the public default branch;
+4. README and Quickstart match the current command surface;
+5. no private/sensitive material has entered the reachable public history;
+6. release notes describe user-visible changes without exposing private benchmark details.
+
+The historical sanitization step was a one-time requirement for the first public release. It should not be repeated for ordinary public development unless private material is accidentally introduced; in that case, stop and remediate the public history before continuing.
