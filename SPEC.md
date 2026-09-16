@@ -131,7 +131,7 @@ The core decision structure is:
 - what remains unknown?;
 - which unknown matters most?;
 - what is the cheapest credible way to reduce it?;
-- what should we explicitly not build yet?.
+- what should we explicitly not build yet?
 
 Allowed gate outcomes are exactly:
 
