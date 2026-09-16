@@ -19,7 +19,7 @@ For early usage, the most useful signals are:
 - did the output change a real decision or next action?;
 - what command or concept caused friction?;
 - did they reach a real-world experiment?;
-- would a hosted version solve meaningful workflow pain?.
+- would a hosted version solve meaningful workflow pain?
 
 Stars, forks, impressions, and compliments are secondary signals.
 
