@@ -2,7 +2,7 @@
 
 Goal: go from a clean clone to your first auditable venture decision with as little setup friction as possible.
 
-Venture OS is currently Claude Code-first. The quickstart assumes you already have Claude Code installed and authenticated.
+Venture OS is currently Claude Code-first. This quickstart assumes Claude Code is already installed and authenticated.
 
 ## 1. Clone and install
 
@@ -46,7 +46,7 @@ Run these commands one at a time:
 /venture-decide ventures/my-venture
 ```
 
-Inspect the output between stages. The system is intentionally not a one-command idea validator.
+Inspect the output between stages. Venture OS is intentionally not a one-command idea validator.
 
 ## 4. Read the decision
 
@@ -56,35 +56,73 @@ The canonical current state is:
 ventures/my-venture/venture.yaml
 ```
 
-The decision record is under:
+Immutable decision records are under:
 
 ```text
 ventures/my-venture/decisions/
 ```
 
-A valid outcome can be:
+A valid gate outcome is exactly one of:
 
-- `PROCEED` — evidence justifies moving forward;
-- `TEST` — a material uncertainty needs a cheap experiment;
+- `PROCEED` — evidence justifies investing in the next stage;
+- `TEST` — a material uncertainty needs a cheap credible experiment;
 - `PARK` — stop until explicit revisit conditions become true.
 
-There is no required positive outcome. Unknown is valid.
+There is no required positive outcome. Unknown is valid. The thesis can be reframed as evidence changes, but reframing is not a fourth gate outcome.
 
-## 5. Continue only if the gate justifies it
+## 5. Follow the gate
 
-For positioning and experiment design:
+Do not run every command mechanically.
+
+### If the decision is `PROCEED`
+
+Create evidence-constrained positioning, then design the market-facing experiment:
 
 ```text
 /venture-position ventures/my-venture
 /venture-experiment ventures/my-venture
 ```
 
-After running an experiment and collecting real evidence:
+### If the decision is `TEST`
+
+Design the cheapest credible experiment that targets the active blocking assumption:
+
+```text
+/venture-experiment ventures/my-venture
+```
+
+Do not invent positioning work merely because that command exists.
+
+### If the decision is `PARK`
+
+Stop. Read the recorded `revisit_when` conditions in canonical state. Do not keep testing until one of those conditions or genuinely new evidence justifies reopening the venture.
+
+## 6. Learn from a real experiment
+
+After executing an experiment and collecting real first-party or behavioral evidence:
 
 ```text
 /venture-learn ventures/my-venture
 /venture-decide ventures/my-venture
 ```
+
+The new gate can confirm, reverse, or narrow the previous direction.
+
+At any point, inspect current state with:
+
+```text
+/venture-status ventures/my-venture
+```
+
+## What good usage looks like
+
+The goal is not to produce more documents. A useful run changes at least one of:
+
+- what you believe;
+- how confident you are;
+- what you should test next;
+- what you should not build;
+- whether the venture should proceed, test, or park.
 
 ## What to report if something is confusing
 
@@ -96,11 +134,12 @@ The most useful feedback is not “I liked it.” Tell us:
 - the furthest stage you reached;
 - whether the resulting decision changed what you planned to do next.
 
-Use the repository feedback issue template. See `docs/FEEDBACK.md`.
+Use the repository **Workflow feedback** issue form for structured feedback or Discussions for an open-ended question. See `docs/FEEDBACK.md`.
 
 ## Next references
 
 - `README.md` — project overview
 - `docs/WORKFLOWS.md` — canonical command map
 - `framework/methodology.md` — reasoning model
+- `framework/gates.md` — gate semantics
 - `CONTRIBUTING.md` — contribute cases or framework changes
