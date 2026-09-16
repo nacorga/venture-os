@@ -32,12 +32,41 @@ Then, inside Claude Code:
 /venture-decide ventures/my-venture
 ```
 
-Continue only when the current gate justifies it:
+The first four commands form the common path to an auditable gate. After that, follow the gate rather than a fixed sequence.
+
+### `PROCEED`
+
+Current evidence justifies investing in the next stage:
 
 ```text
 /venture-position ventures/my-venture
 /venture-experiment ventures/my-venture
+```
+
+### `TEST`
+
+A critical assumption blocks progression. Design the cheapest credible experiment that targets the active blocker:
+
+```text
+/venture-experiment ventures/my-venture
+```
+
+### `PARK`
+
+Stop. Do not continue the workflow until a recorded revisit condition or genuinely new evidence justifies reopening the venture.
+
+### After an experiment
+
+Once real evidence exists:
+
+```text
 /venture-learn ventures/my-venture
+/venture-decide ventures/my-venture
+```
+
+At any point:
+
+```text
 /venture-status ventures/my-venture
 ```
 
@@ -79,6 +108,8 @@ Open another fresh Claude Code session:
 
 Fresh-session boundaries are part of the evaluation design, not optional ceremony.
 
+Real or sensitive holdout benchmarks stay outside the public repository and should run against a pinned public commit.
+
 ## Low-level scripts
 
 Scripts exist for deterministic mechanics and automation. Use them when debugging or integrating Venture OS programmatically, not because the user must memorize another workflow.
@@ -102,5 +133,5 @@ When a workflow needs improvement:
 1. Change the owning `SKILL.md` if the procedure changes.
 2. Change `CLAUDE.md` or `framework/` if a global invariant changes.
 3. Change a script if deterministic mechanics change.
-4. Update docs only when command names/order change.
+4. Update docs only when command names, ordering, gate semantics, or user-facing expectations change.
 5. Do not patch multiple copies of the same prompt because there should not be multiple copies.

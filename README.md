@@ -6,13 +6,13 @@
 
 An open-source, evidence-first operating system for turning business ideas into tested decisions with AI agents.
 
-Venture OS is currently **Claude Code-first**. It helps founders and builders move from idea → research → challenge → decision → experiment without making “build the product” the default answer.
+**Venture OS v0.1 is Claude Code-first.** It helps founders and builders move from an idea to evidence, an auditable decision, and a real-world experiment without making “build the product” the default answer.
 
 ```text
-Idea → Research → Challenge → Decide → Position → Experiment → Learn
+Idea → Research → Challenge → Decision → Experiment → Learn
 ```
 
-A valid outcome can be **PROCEED**, **TEST**, **PARK**, or a reframed thesis. Unknown is a valid state.
+The public flow above is intentionally simple. Internally, decisions branch: `PROCEED` moves into positioning before experiment design, `TEST` targets the blocking assumption with the cheapest credible experiment, and `PARK` stops investment until an explicit revisit condition becomes true.
 
 ## Start here
 
@@ -42,7 +42,7 @@ Then run, one stage at a time:
 
 Your current state lives in `ventures/my-venture/venture.yaml`; immutable decision records live under `ventures/my-venture/decisions/`.
 
-For the complete first-run path, expected outputs, and next steps, use **[`docs/QUICKSTART.md`](docs/QUICKSTART.md)**.
+For the complete first-run path, expected outputs, and gate-specific next steps, use **[`docs/QUICKSTART.md`](docs/QUICKSTART.md)**.
 
 ## Why this exists
 
@@ -57,14 +57,36 @@ AI can generate convincing business advice very easily. Venture OS makes that ad
 
 The system does not assign an overall “idea score.” It asks what is known, what is assumed, what could kill the thesis, and what the cheapest credible next test is.
 
+## Decision gates
+
+Every material decision uses one of three outcomes:
+
+- **PROCEED** — current evidence justifies investing in the next stage;
+- **TEST** — the opportunity remains plausible, but a critical assumption blocks further commitment;
+- **PARK** — current evidence does not justify more investment now.
+
+`PARK` is not permanent rejection. It must record what new evidence would justify reopening the venture. The thesis itself can change as evidence changes, but thesis reframing is not a fourth gate outcome.
+
 ## Continue the venture
 
-Only continue when the current gate justifies it:
+After `/venture-decide`, follow the gate rather than a fixed pipeline:
 
 ```text
-/venture-position ventures/my-venture
-/venture-experiment ventures/my-venture
+PROCEED → /venture-position → /venture-experiment
+TEST    → /venture-experiment
+PARK    → stop until a recorded revisit condition is met
+```
+
+After a real-world experiment:
+
+```text
 /venture-learn ventures/my-venture
+/venture-decide ventures/my-venture
+```
+
+At any point:
+
+```text
 /venture-status ventures/my-venture
 ```
 
@@ -99,21 +121,21 @@ Public benchmark inputs come from the Case Library. Maintainer-owned evaluator e
 /eval-new inventory-monitoring-saas claude-opus-5
 ```
 
-The skill returns a run ID and preserves fresh-session boundaries through run, freeze, and score.
+The eval workflow preserves fresh-session boundaries through run, freeze, and score. Real or sensitive benchmarks belong outside this repository and should be executed against a pinned public commit.
 
-Real or sensitive benchmarks belong outside this repository. See [`evals/README.md`](evals/README.md) and [`docs/PUBLICATION.md`](docs/PUBLICATION.md).
+See [`evals/README.md`](evals/README.md) and [`docs/PUBLICATION.md`](docs/PUBLICATION.md).
 
-## Feedback and hosted early access
+## Feedback and hosted interest
 
-Venture OS v0.1 prioritizes **completed workflows** over attention metrics. The useful signals are whether someone creates a venture, reaches a decision, designs an experiment, and changes a real next action.
+Venture OS v0.1 prioritizes **completed workflows** over attention metrics. The useful signals are whether someone creates a venture, reaches a decision, designs or executes an experiment, and changes a real next action.
 
-There is no hidden usage telemetry required for v0.1. Feedback is explicit and user-submitted. See [`docs/FEEDBACK.md`](docs/FEEDBACK.md).
+There is no hidden usage telemetry required for v0.1. Feedback is explicit and user-submitted through GitHub Issues or Discussions. See [`docs/FEEDBACK.md`](docs/FEEDBACK.md).
 
 If a hosted version would remove meaningful workflow pain for you, use the **Workflow feedback** issue form and select `Yes` or `Maybe` for hosted-version interest. No mailing-list signup is required.
 
 ## Contributing
 
-The smallest useful contribution is often a new Case Library entry. CI validates repository structure, every public `case.yaml`, the venture onboarding scaffold, and the bridge into the eval harness.
+The smallest useful contribution is often a new Case Library entry. CI validates repository structure, public `case.yaml` files, the venture onboarding scaffold, and the bridge into the eval harness.
 
 Start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
@@ -161,9 +183,11 @@ The important question is not how many outputs the agents generate. It is whethe
 
 GitHub stars and forks are secondary signals. Completed decision and experiment loops are stronger ones.
 
-## Public v0.1 release gate
+## Release status
 
-The repository had a private development phase. Do **not** publish its existing private Git history directly. Public v0.1 must be created from sanitized history and pass the clean-checkout release checklist in [`docs/LAUNCH_CHECKLIST.md`](docs/LAUNCH_CHECKLIST.md).
+`v0.1.0` is the first public release. The public repository was initialized from a sanitized root history; private development history and real/sensitive benchmark material remain outside it.
+
+The technical launch gate is complete. The current validation gate is external usage: at least 10 people who did not build Venture OS should attempt the Quickstart without live guidance. See [`docs/LAUNCH_CHECKLIST.md`](docs/LAUNCH_CHECKLIST.md).
 
 ## License
 

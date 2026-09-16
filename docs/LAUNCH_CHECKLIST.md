@@ -1,20 +1,22 @@
 # Public v0.1 launch checklist
 
-This checklist is the release gate for making Venture OS public.
+Status: **technical launch complete**. The remaining M3 gate is external usage by people who did not build Venture OS.
 
-## Repository safety
+This file records the first public-release gate so later work does not accidentally reopen already-completed launch tasks.
 
-- [ ] Current tree contains only generic, publishable content.
-- [ ] No secrets, private URLs, customer data, or private venture artifacts are present.
-- [ ] Public history is sanitized. Do not expose the private development history.
-- [ ] Prefer a fresh public repository or a deliberately rewritten root history over merely changing visibility on the current private repository.
-- [ ] Private benchmark suite remains stored separately.
+## Repository safety — complete
 
-See `docs/PUBLICATION.md`.
+- [x] Current public tree contains only generic, publishable content.
+- [x] No secrets, private URLs, customer data, or private venture artifacts are present in the public tree.
+- [x] Public history is sanitized; the private development history is not exposed.
+- [x] Public repository was created from a fresh sanitized root history rather than by changing visibility on the private repository.
+- [x] Private benchmark suite remains stored separately.
 
-## Clean-checkout onboarding
+See `docs/PUBLICATION.md` for the ongoing repository boundary.
 
-From a clean checkout:
+## Clean-checkout onboarding — complete
+
+Validated from a clean checkout with:
 
 ```bash
 npm install
@@ -24,42 +26,52 @@ npm run venture:new -- onboarding-smoke "A B2B SaaS that helps small teams detec
 npm run venture:check -- onboarding-smoke
 ```
 
-Then confirm Claude Code exposes the project skills and the Quickstart can reach a decision without private context.
+- [x] `docs/QUICKSTART.md` is usable from a clean clone.
+- [x] No undocumented private setup is required for the public workflow.
+- [x] Claude Code project skills are the public workflow surface.
+- [x] CI is green on the public default branch.
 
-- [ ] `docs/QUICKSTART.md` is accurate from a clean clone.
-- [ ] No undocumented local setup is required.
-- [ ] CI is green.
+## Community surface — complete
 
-## Community surface
+- [x] Issues enabled.
+- [x] Bug report form available.
+- [x] Case contribution form available.
+- [x] Workflow feedback form available.
+- [x] Discussions enabled.
+- [x] `CONTRIBUTING.md` linked from README.
+- [x] Privacy-first feedback policy linked from README.
 
-- [ ] Issues enabled.
-- [ ] Bug report form available.
-- [ ] Case contribution form available.
-- [ ] Feedback form available.
-- [ ] Discussions enabled if we want open-ended community conversation.
-- [ ] `CONTRIBUTING.md` is linked from README.
-- [ ] Privacy-first feedback policy is linked from README.
+## Release — complete
 
-## Release
+- [x] Repository published from sanitized history.
+- [x] Public `v0.1.0` release created.
+- [x] README links and hero asset resolve from the public repository.
+- [x] CI run completed successfully on the public default branch after launch.
+- [x] Root commit author uses the GitHub `noreply` address rather than a personal email.
 
-- [ ] Repository published from sanitized history.
-- [ ] Create/tag public `v0.1.0` release after the clean public repository is verified.
-- [ ] README links resolve from the public repository.
-- [ ] Run CI once on the public default branch.
+## External user gate — in progress
 
-## External user gate
+Invite at least 10 people who did not build Venture OS to try the Quickstart **without live guidance**.
 
-Invite at least 10 people who did not build Venture OS to try the Quickstart without live guidance.
+Track useful behavioral outcomes rather than attention metrics:
 
-Track only useful behavioral outcomes:
+- [ ] user attempted the Quickstart;
+- [ ] venture created;
+- [ ] research reached;
+- [ ] decision reached;
+- [ ] experiment designed or executed;
+- [ ] blocking onboarding issue captured when present;
+- [ ] whether the workflow changed a real next action captured.
 
-- venture created;
-- research reached;
-- decision reached;
-- experiment designed or executed;
-- blocking onboarding issue;
-- whether the workflow changed a real next action.
+The checklist above describes the observations to collect across the cohort; it is not complete merely because one user reaches each item.
 
-Do not treat stars, forks, impressions, or compliments as substitutes for completed workflows.
+Do not treat stars, forks, impressions, comments, or compliments as substitutes for completed workflows.
 
-M3 is not complete until the repository is public and external users have actually attempted the workflow.
+## M3 completion condition
+
+M3 is complete only when:
+
+1. the technical launch remains healthy; and
+2. at least 10 external users have actually attempted the workflow without live guidance, with enough behavioral feedback to identify the main onboarding and decision-quality failure modes.
+
+Until then, avoid speculative product expansion. Fix demonstrated onboarding or decision-system failures first.
