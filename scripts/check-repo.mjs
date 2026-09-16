@@ -35,6 +35,7 @@ const expected = [
   'docs/LAUNCH_CHECKLIST.md',
   'docs/CASE_FORMAT.md',
   'docs/CASE_PUBLISHING.md',
+  'docs/PUBLICATION.md',
   'scripts/case-utils.mjs',
   'scripts/new-case.mjs',
   'scripts/validate-case.mjs'
@@ -48,11 +49,20 @@ if (fs.existsSync(path.join(root, 'evals', 'golden'))) {
 const readmePath = path.join(root, 'README.md');
 if (fs.existsSync(readmePath)) {
   const readme = fs.readFileSync(readmePath, 'utf8');
-  for (const requiredLink of ['docs/QUICKSTART.md', 'docs/FEEDBACK.md', 'docs/LAUNCH_CHECKLIST.md', 'CONTRIBUTING.md']) {
+  for (const requiredLink of ['docs/QUICKSTART.md', 'docs/FEEDBACK.md', 'docs/LAUNCH_CHECKLIST.md', 'docs/PUBLICATION.md', 'CONTRIBUTING.md']) {
     if (!readme.includes(requiredLink)) fail(`README.md missing launch/onboarding link: ${requiredLink}`);
   }
-  if (!readme.includes('Do **not** publish its existing private Git history directly')) {
-    fail('README.md must preserve the pre-public sanitized-history warning');
+  if (!readme.includes('## Release status')) {
+    fail('README.md must describe the current public release state');
+  }
+  if (!readme.includes('sanitized root history')) {
+    fail('README.md must preserve the sanitized-history boundary');
+  }
+  if (!readme.includes('PROCEED') || !readme.includes('TEST') || !readme.includes('PARK')) {
+    fail('README.md must document all canonical gate outcomes');
+  }
+  if (readme.includes('or a reframed thesis')) {
+    fail('README.md must not describe thesis reframing as a fourth gate outcome');
   }
 }
 
