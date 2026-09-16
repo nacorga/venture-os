@@ -1,5 +1,9 @@
 # Venture OS
 
+<p align="center">
+  <img src="./assets/venture-os-hero.png" alt="Venture OS — Evidence-first operating system for business ideas" width="100%" />
+</p>
+
 An open-source, evidence-first operating system for turning business ideas into tested decisions with AI agents.
 
 Venture OS is currently **Claude Code-first**. It helps founders and builders move from idea → research → challenge → decision → experiment without making “build the product” the default answer.
