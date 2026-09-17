@@ -28,11 +28,13 @@ Flag:
 - superseded evidence whose replacement has not propagated to every affected assumption;
 - prose artifacts that still assert a superseded conclusion or figure without an inline corrected/superseded marker at the stale site;
 - summary correction blocks that claim a fix while stale claims remain elsewhere;
-- artifact references to A###, E###, DNB### or T### IDs that do not exist in canonical `venture.yaml`;
-- blocking assumptions that have neither the current next action nor an explicit blocking deferral as their resolution path;
+- current operational artifact references to A###, E###, DNB### or T### IDs that have never existed in canonical state or a preserved decision snapshot;
+- blocking assumptions that have neither the decision-time next action nor an explicit blocking deferral as their resolution path at the moment a `TEST` decision is issued;
 - non-empty `next_action.depends_on` in version 2, which has no canonical action history to resolve those IDs against;
 - positional references such as "do-not-build item 4" or "Trigger 2";
-- decision/RESULT projections whose next action, do-not-build set, revisit set, or reopen rule differs from canonical state.
+- the latest decision/RESULT projection when it differs from `latest_decision.snapshot`.
+
+Historical decisions are immutable records. Audit each decision against the snapshot embedded in that decision, not against today's mutable operational `next_action`, `do_not_build`, `revisit_when`, or reopen rule. A DNB### or T### that existed in a preserved historical snapshot remains a valid historical reference even if it has since been retired from current canonical state. Never "fix" a correct old decision merely to make it match the present.
 
 For any evidence record with `superseded_by`, verify both directions of the correction:
 1. the original record remains preserved and points to the replacement;
