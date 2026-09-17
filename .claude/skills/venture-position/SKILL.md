@@ -27,4 +27,6 @@ Persist `positioning.md` with:
 
 Do not disguise uncertain positioning as validated truth.
 
-Update stage to `positioning`. Replace `next_action` with the next stable `N###` object whose single instruction is to design the market experiment. Set `type: experiment`; point `assumption_id` at the assumption the experiment is intended to resolve when known, otherwise null. Do not revert to a free-text action.
+Update stage to `positioning`. Replace current `next_action` with the next stable `N###` object whose single instruction is to design the market experiment. Set `type: experiment`; point `assumption_id` at the assumption the experiment is intended to resolve when known, otherwise null. Do not revert to a free-text action.
+
+Never rewrite `latest_decision.snapshot` when current operational state advances. The snapshot records the state that justified the prior decision.
