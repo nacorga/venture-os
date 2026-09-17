@@ -29,6 +29,13 @@ decision_rules:
   on_failure: ""
   on_ambiguous: ""
 
+preregistration:
+  locked_at: null
+  sha256: null
+# Keep status=designed while editing. Immediately before execution run:
+# npm run experiment:lock -- <path-to-experiment.yaml>
+# The command moves status to running and hashes the decision-relevant design.
+
 results:
   observations: []
   evidence_ids: []
