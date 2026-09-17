@@ -1,7 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
-import { extractExperimentDesign, validateExperimentFile } from './experiment-utils.mjs';
+import {
+  experimentReadinessErrors,
+  extractExperimentDesign,
+  validateExperimentFile,
+} from './experiment-utils.mjs';
 
 const [target] = process.argv.slice(2);
 if (!target) {
@@ -33,6 +37,12 @@ if (experiment.status !== 'designed') {
 const preregistration = experiment.preregistration ?? {};
 if (preregistration.locked_at || preregistration.design) {
   console.error(`Cannot lock ${experiment.id}: preregistration is already set`);
+  process.exit(1);
+}
+
+const readinessErrors = experimentReadinessErrors(experiment);
+if (readinessErrors.length) {
+  for (const error of readinessErrors) console.error(`Cannot lock ${experiment.id}: ${error}`);
   process.exit(1);
 }
 
