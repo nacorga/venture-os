@@ -39,7 +39,10 @@
   },
   "allOf": [
     {
-      "if": { "required": ["derivation"] },
+      "if": {
+        "properties": { "derivation": {} },
+        "required": ["derivation"]
+      },
       "then": { "required": ["segment"] }
     }
   ],
