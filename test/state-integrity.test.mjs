@@ -203,3 +203,84 @@ test('decision projection must preserve the complete decision snapshot', (t) => 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /decision snapshot differs/);
 });
+
+test('retired do-not-build and revisit IDs remain valid in historical decision snapshots', (t) => {
+  const current = baseState();
+  current.latest_decision = {
+    id: 'D002',
+    outcome: 'PROCEED',
+    path: 'decisions/D002.md',
+    snapshot: {
+      next_action: structuredClone(current.next_action),
+      blocking_assumptions: [],
+      blocking_deferrals: [],
+      do_not_build: [],
+      revisit_when: [],
+      reopen_combination_rule: null,
+    },
+  };
+
+  const historical = structuredClone(current);
+  historical.latest_decision = {
+    id: 'D001',
+    outcome: 'PARK',
+    path: 'decisions/D001.md',
+    snapshot: {
+      next_action: structuredClone(current.next_action),
+      blocking_assumptions: [],
+      blocking_deferrals: [],
+      do_not_build: [{ id: 'DNB001', statement: 'Do not build the integration yet.', evidence_ids: ['E001'] }],
+      revisit_when: [{ id: 'T001', condition: 'New first-party demand evidence appears.', check: null }],
+      reopen_combination_rule: { all_of: [], any_of: ['T001'], note: null },
+    },
+  };
+
+  const ventureDir = createVenture(t, current);
+  fs.writeFileSync(path.join(ventureDir, 'decisions', 'D001.md'), decisionProjection(historical));
+  fs.writeFileSync(path.join(ventureDir, 'decisions', 'D002.md'), decisionProjection(current));
+
+  const result = runEvidenceCheck(ventureDir);
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+});
+
+test('post-experiment learning may schedule a neutral re-decision after a TEST snapshot', (t) => {
+  const state = baseState();
+  state.stage = 'learning';
+  state.blocking_assumptions = ['A001'];
+  state.next_action = {
+    id: 'N006',
+    type: 'decision',
+    assumption_id: null,
+    instruction: 'Re-evaluate the venture after recording experiment results.',
+    success_signal: null,
+    failure_signal: null,
+    depends_on: [],
+  };
+  state.latest_decision = {
+    id: 'D001',
+    outcome: 'TEST',
+    path: 'decisions/D001.md',
+    snapshot: {
+      next_action: {
+        id: 'N004',
+        type: 'experiment',
+        assumption_id: 'A001',
+        instruction: 'Run the bounded experiment.',
+        success_signal: 'Observed behavior supports A001.',
+        failure_signal: 'Observed behavior contradicts A001.',
+        depends_on: [],
+      },
+      blocking_assumptions: ['A001'],
+      blocking_deferrals: [],
+      do_not_build: [],
+      revisit_when: [],
+      reopen_combination_rule: null,
+    },
+  };
+
+  const ventureDir = createVenture(t, state);
+  fs.writeFileSync(path.join(ventureDir, 'decisions', 'D001.md'), decisionProjection(state));
+
+  const result = runEvidenceCheck(ventureDir);
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+});
