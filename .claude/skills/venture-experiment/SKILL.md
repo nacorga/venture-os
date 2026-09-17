@@ -27,6 +27,14 @@ Prefer behavioral evidence over stated preference.
 
 Do not build production software if a smaller test can resolve the same uncertainty.
 
+Keep the experiment in `status: designed` while editing its design. Immediately before execution, run:
+
+```text
+npm run experiment:lock -- <path-to-experiment.yaml>
+```
+
+The lock command moves the experiment to `running` and records a SHA-256 over the decision-relevant design. After that point, changing the target, procedure, budget, signals, or decision rules is an integrity failure. Record deviations as observations/limitations instead of rewriting the preregistered design.
+
 Set the venture stage to `experiment`. Replace current `next_action` with the next stable `N###` object whose single instruction is to execute this experiment. Set `type: experiment`, `assumption_id` to the experiment's primary assumption, and copy the experiment's pre-registered success/failure signals into canonical state rather than paraphrasing them.
 
 Never rewrite `latest_decision.snapshot` when current operational state advances. The snapshot records the state that justified the prior decision.
