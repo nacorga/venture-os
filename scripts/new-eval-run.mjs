@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { casesRoot, validateCaseFile } from './case-utils.mjs';
+import {
+  evaluatorSourceHashes,
+  gitProvenance,
+  runtimeProvenance,
+  sha256File,
+} from './eval-provenance.mjs';
 
 const [caseName, modelLabel = 'manual'] = process.argv.slice(2);
 
@@ -41,15 +46,9 @@ for (const sub of ['research', 'decisions', 'experiments', 'learning']) {
   fs.mkdirSync(path.join(ventureDir, sub), { recursive: true });
 }
 
-let commit = 'unknown';
-try {
-  commit = execFileSync('git', ['rev-parse', 'HEAD'], {
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'ignore']
-  }).trim();
-} catch {
-  // A run remains useful outside git; record that provenance is unavailable.
-}
+const git = gitProvenance(root);
+const runtime = runtimeProvenance(root);
+const evaluatorSources = evaluatorSourceHashes(root, caseName);
 
 fs.writeFileSync(path.join(runDir, 'case.yaml'), caseContent);
 fs.writeFileSync(
@@ -60,8 +59,14 @@ fs.writeFileSync(
     case_schema_version: caseResult.value.schema_version,
     model_label: modelLabel,
     created_at: new Date().toISOString(),
-    commit,
-    status: 'CREATED'
+    commit: git.commit,
+    status: 'CREATED',
+    provenance: {
+      git,
+      case_sha256: sha256File(casePath),
+      ...runtime,
+      evaluator_sources: evaluatorSources,
+    },
   }, null, 2) + '\n'
 );
 
@@ -69,4 +74,6 @@ const prompt = `# Eval Run: ${caseName}\n\nSeed idea:\n\n> ${input}\n\n## Canoni
 fs.writeFileSync(path.join(runDir, 'RUN.md'), prompt);
 
 console.log(`Created evals/runs/${runId}`);
+console.log(`Framework sha256: ${runtime.framework_sha256}`);
+if (git.dirty) console.log('Note: git worktree is dirty; effective runtime hash is recorded in metadata.json.');
 console.log(`Fresh Claude Code session: /eval-run ${runId}`);

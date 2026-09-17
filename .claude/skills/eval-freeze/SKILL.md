@@ -20,7 +20,7 @@ Set `<run-dir>` to `evals/runs/$ARGUMENTS`.
 ## Procedure
 
 1. Confirm `<run-dir>/RESULT.md` and `<run-dir>/venture/venture.yaml` exist.
-2. Do not read `evals/reference/`.
+2. Do not read `evals/reference/`, the live rubric, or any evaluator-only content.
 3. Run:
 
    ```bash
@@ -35,14 +35,16 @@ Set `<run-dir>` to `evals/runs/$ARGUMENTS`.
    npm run eval:freeze -- $ARGUMENTS
    ```
 
+   The deterministic freeze primitive independently revalidates the case, canonical venture state, complete decision, evidence/experiment integrity, effective framework hash and evaluator-source hashes. Only after those checks pass does it create `<run-dir>/evaluator/` with the frozen reference/rubric/scoring contract.
+
 5. Run:
 
    ```bash
    npm run eval:verify -- $ARGUMENTS
    ```
 
-6. Require successful integrity verification. Report the frozen SHA-256 digest.
-7. Do not modify any frozen artifact after this point.
+6. Require successful integrity and evaluator-provenance verification. Report the frozen artifact SHA-256 and framework SHA-256.
+7. Do not modify any frozen artifact or evaluator input after this point. `SCORE.md` is intentionally the only scoring output outside the frozen digest.
 
 ## Completion
 
