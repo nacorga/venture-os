@@ -1,48 +1,104 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://venture-os.dev/schemas/experiment-v1.schema.json",
   "title": "Experiment",
   "type": "object",
-  "required": [
-    "version",
-    "id",
-    "name",
-    "status",
-    "primary_assumption_id",
-    "procedure",
-    "signals",
-    "decision_rules"
-  ],
+  "required": ["version", "id", "name", "status", "created_at", "primary_assumption_id", "why_critical", "target", "procedure", "assets", "budget", "signals", "decision_rules", "preregistration", "results"],
   "properties": {
-    "version": {
-      "const": 1
+    "version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^X[0-9]{3,}$" },
+    "name": { "type": "string" },
+    "status": { "enum": ["designed", "running", "completed", "cancelled"] },
+    "created_at": { "type": ["string", "null"] },
+    "primary_assumption_id": { "type": "string", "pattern": "^A[0-9]{3,}$" },
+    "why_critical": { "type": "string" },
+    "target": {
+      "type": "object",
+      "required": ["description", "sample_goal"],
+      "properties": {
+        "description": { "type": "string" },
+        "sample_goal": { "type": ["integer", "null"], "minimum": 1 }
+      },
+      "additionalProperties": true
     },
-    "id": {
-      "type": "string",
-      "pattern": "^X[0-9]{3,}$"
-    },
-    "name": {
-      "type": "string"
-    },
-    "status": {
-      "enum": [
-        "designed",
-        "running",
-        "completed",
-        "cancelled"
-      ]
-    },
-    "primary_assumption_id": {
-      "type": "string"
-    },
-    "procedure": {
-      "type": "array"
+    "procedure": { "type": "array" },
+    "assets": { "type": "array" },
+    "budget": {
+      "type": "object",
+      "required": ["max_days", "max_cash", "currency"],
+      "properties": {
+        "max_days": { "type": ["number", "null"], "minimum": 0 },
+        "max_cash": { "type": ["number", "null"], "minimum": 0 },
+        "currency": { "type": "string", "minLength": 3 }
+      },
+      "additionalProperties": false
     },
     "signals": {
-      "type": "object"
+      "type": "object",
+      "required": ["success", "failure", "ambiguous"],
+      "properties": {
+        "success": { "type": "array" },
+        "failure": { "type": "array" },
+        "ambiguous": { "type": "array" }
+      },
+      "additionalProperties": false
     },
     "decision_rules": {
-      "type": "object"
+      "type": "object",
+      "required": ["on_success", "on_failure", "on_ambiguous"],
+      "properties": {
+        "on_success": { "type": "string" },
+        "on_failure": { "type": "string" },
+        "on_ambiguous": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "preregistration": {
+      "type": "object",
+      "required": ["locked_at", "sha256"],
+      "properties": {
+        "locked_at": { "type": ["string", "null"] },
+        "sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "results": {
+      "type": "object",
+      "required": ["observations", "evidence_ids", "completed_at"],
+      "properties": {
+        "observations": { "type": "array" },
+        "evidence_ids": { "type": "array", "items": { "type": "string", "pattern": "^E[0-9]{3,}$" }, "uniqueItems": true },
+        "completed_at": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
     }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "enum": ["running", "completed", "cancelled"] } }, "required": ["status"] },
+      "then": {
+        "properties": {
+          "preregistration": {
+            "properties": {
+              "locked_at": { "type": "string", "minLength": 1 },
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "completed" } }, "required": ["status"] },
+      "then": {
+        "properties": {
+          "results": {
+            "properties": {
+              "completed_at": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
+  ],
   "additionalProperties": true
 }
