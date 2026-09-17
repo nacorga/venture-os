@@ -2,7 +2,7 @@ version: 1
 id: "X001"
 name: ""
 status: designed
-created_at: ""
+created_at: null
 
 primary_assumption_id: ""
 why_critical: ""
@@ -28,6 +28,10 @@ decision_rules:
   on_success: ""
   on_failure: ""
   on_ambiguous: ""
+
+preregistration:
+  locked_at: null
+  design: null
 
 results:
   observations: []
