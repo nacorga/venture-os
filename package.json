@@ -16,6 +16,7 @@
     "eval:new": "node scripts/new-eval-run.mjs",
     "eval:freeze": "node scripts/freeze-eval-run.mjs",
     "eval:verify": "node scripts/verify-eval-run.mjs",
+    "eval:context": "node scripts/verify-eval-context.mjs",
     "case:new": "node scripts/new-case.mjs",
     "case:validate": "node scripts/validate-case.mjs",
     "repo:check": "node scripts/check-repo.mjs"
