@@ -56,6 +56,22 @@ function refsFromReopenRule(rule) {
   return unique([...(rule.all_of ?? []), ...(rule.any_of ?? [])]);
 }
 
+function referenceIdsFromSnapshot(snapshot) {
+  const ids = new Set();
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return ids;
+
+  if (snapshot.next_action?.assumption_id) ids.add(snapshot.next_action.assumption_id);
+  for (const id of snapshot.blocking_assumptions ?? []) ids.add(id);
+  for (const deferral of snapshot.blocking_deferrals ?? []) if (deferral.assumption_id) ids.add(deferral.assumption_id);
+  for (const item of snapshot.do_not_build ?? []) {
+    if (item.id) ids.add(item.id);
+    for (const evidenceId of item.evidence_ids ?? []) ids.add(evidenceId);
+  }
+  for (const item of snapshot.revisit_when ?? []) if (item.id) ids.add(item.id);
+  for (const id of refsFromReopenRule(snapshot.reopen_combination_rule)) ids.add(id);
+  return ids;
+}
+
 const assumptions = mapById(state.assumptions, 'assumption');
 const evidence = mapById(state.evidence_index, 'evidence');
 const doNotBuild = mapById(state.do_not_build, 'do-not-build');
@@ -160,16 +176,21 @@ for (const id of reopenRefs) if (!revisitWhen.has(id)) fail(`reopen_combination_
 const latestDecision = state.latest_decision;
 if (latestDecision.outcome === 'PARK' && revisitWhen.size === 0) fail('PARK decision requires at least one revisit_when trigger');
 
-if (state.version >= 2 && latestDecision.outcome === 'TEST') {
-  if (blockingIds.size && !nextAction.assumption_id) {
-    fail('TEST with blocking_assumptions requires next_action.assumption_id or explicit deferral for every blocker');
+if (state.version >= 2 && latestDecision.outcome === 'TEST' && latestDecision.snapshot) {
+  const snapshot = latestDecision.snapshot;
+  const decisionBlockingIds = new Set(snapshot.blocking_assumptions ?? []);
+  const decisionDeferrals = new Set((snapshot.blocking_deferrals ?? []).map((item) => item.assumption_id));
+  const decisionAction = snapshot.next_action;
+
+  if (decisionBlockingIds.size && !decisionAction?.assumption_id) {
+    fail('TEST decision snapshot with blocking_assumptions requires its decision-time next_action.assumption_id');
   }
-  if (nextAction.assumption_id && !blockingIds.has(nextAction.assumption_id)) {
-    fail(`TEST next_action targets ${nextAction.assumption_id}, but it is not listed in blocking_assumptions`);
+  if (decisionAction?.assumption_id && !decisionBlockingIds.has(decisionAction.assumption_id)) {
+    fail(`TEST decision snapshot targets ${decisionAction.assumption_id}, but it is not listed in the decision snapshot blocking_assumptions`);
   }
-  for (const blocker of blockingIds) {
-    if (blocker !== nextAction.assumption_id && !blockingDeferrals.has(blocker)) {
-      fail(`blocking assumption ${blocker} has no current next action and no blocking_deferrals resolution path`);
+  for (const blocker of decisionBlockingIds) {
+    if (blocker !== decisionAction?.assumption_id && !decisionDeferrals.has(blocker)) {
+      fail(`TEST decision snapshot blocking assumption ${blocker} has no decision-time next action and no blocking_deferrals resolution path`);
     }
   }
 }
@@ -234,15 +255,28 @@ if (latestDecision.id) {
 const resultPath = path.join(path.dirname(ventureDir), 'RESULT.md');
 if (fs.existsSync(resultPath) && latestDecision.id) verifyDecisionSnapshot(resultPath, path.relative(root, resultPath));
 
-const knownIds = new Set([...assumptions.keys(), ...evidence.keys(), ...doNotBuild.keys(), ...revisitWhen.keys()]);
+const currentKnownIds = new Set([...assumptions.keys(), ...evidence.keys(), ...doNotBuild.keys(), ...revisitWhen.keys()]);
+const historicalKnownIds = new Set();
 const artifactPaths = [];
 for (const dirName of ['research', 'decisions', 'learning']) {
   const dir = path.join(ventureDir, dirName);
   if (!fs.existsSync(dir)) continue;
-  for (const entry of fs.readdirSync(dir)) if (entry.endsWith('.md')) artifactPaths.push(path.join(dir, entry));
+  for (const entry of fs.readdirSync(dir)) {
+    if (!entry.endsWith('.md')) continue;
+    const filePath = path.join(dir, entry);
+    artifactPaths.push(filePath);
+
+    if (dirName === 'decisions') {
+      const projection = parseDecisionProjection(fs.readFileSync(filePath, 'utf8'));
+      if (projection.valid) {
+        for (const id of referenceIdsFromSnapshot(projection.value.snapshot)) historicalKnownIds.add(id);
+      }
+    }
+  }
 }
 if (fs.existsSync(resultPath)) artifactPaths.push(resultPath);
 
+const knownIds = new Set([...currentKnownIds, ...historicalKnownIds]);
 for (const filePath of artifactPaths) {
   const content = fs.readFileSync(filePath, 'utf8');
   for (const id of new Set(content.match(/\b(?:DNB\d{3,}|[AET]\d{3,})\b/g) ?? [])) {

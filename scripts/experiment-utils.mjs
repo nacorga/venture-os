@@ -43,6 +43,40 @@ export function listExperimentFiles(ventureDir) {
   return files.sort();
 }
 
+function nonEmptyStrings(values) {
+  return Array.isArray(values) && values.length > 0 && values.every((value) => typeof value === 'string' && value.trim().length > 0);
+}
+
+export function experimentReadinessErrors(experiment) {
+  const errors = [];
+
+  if (!nonEmptyStrings(experiment.procedure)) {
+    errors.push(`${experiment.id} procedure must contain at least one non-empty execution step before preregistration`);
+  }
+
+  for (const signal of ['success', 'failure', 'ambiguous']) {
+    if (!nonEmptyStrings(experiment.signals?.[signal])) {
+      errors.push(`${experiment.id} signals.${signal} must contain at least one observable criterion before preregistration`);
+    }
+  }
+
+  for (const rule of ['on_success', 'on_failure', 'on_ambiguous']) {
+    const value = experiment.decision_rules?.[rule];
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      errors.push(`${experiment.id} decision_rules.${rule} must be explicit before preregistration`);
+    }
+  }
+
+  if (experiment.budget?.max_days === null || experiment.budget?.max_days === undefined || experiment.budget.max_days <= 0) {
+    errors.push(`${experiment.id} budget.max_days must be an explicit positive time cap before preregistration`);
+  }
+  if (experiment.budget?.max_cash === null || experiment.budget?.max_cash === undefined || experiment.budget.max_cash < 0) {
+    errors.push(`${experiment.id} budget.max_cash must be an explicit non-negative cost cap before preregistration`);
+  }
+
+  return errors;
+}
+
 export function experimentPreregistrationErrors(experiment) {
   const errors = [];
   const lockedAt = experiment.preregistration?.locked_at ?? null;
@@ -61,6 +95,7 @@ export function experimentPreregistrationErrors(experiment) {
   }
 
   if (hasLockedAt) {
+    errors.push(...experimentReadinessErrors(experiment));
     const currentDesign = extractExperimentDesign(experiment);
     if (!isDeepStrictEqual(currentDesign, lockedDesign)) {
       errors.push(`${experiment.id} design differs from its preregistered snapshot`);
