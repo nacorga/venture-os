@@ -14,6 +14,7 @@ export const experimentSchemaPath = path.join(repoRoot, 'framework', 'schemas', 
 
 let ventureValidator;
 let experimentValidator;
+let decisionProjectionValidator;
 
 function loadJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -101,6 +102,29 @@ export function validateExperimentObject(value) {
   };
 }
 
+export function validateDecisionProjectionObject(value) {
+  if (!decisionProjectionValidator) {
+    const ajv = createAjv();
+    const ventureSchema = loadJson(ventureSchemaPath);
+    ajv.addSchema(ventureSchema);
+    decisionProjectionValidator = ajv.compile({
+      type: 'object',
+      required: ['decision_id', 'outcome', 'snapshot'],
+      properties: {
+        decision_id: { type: 'string', pattern: '^D[0-9]{3,}$' },
+        outcome: { enum: ['PROCEED', 'TEST', 'PARK'] },
+        snapshot: { $ref: `${ventureSchema.$id}#/$defs/decisionSnapshot` },
+      },
+      additionalProperties: false,
+    });
+  }
+  const valid = decisionProjectionValidator(value);
+  return {
+    valid: Boolean(valid),
+    errors: valid ? [] : (decisionProjectionValidator.errors ?? []).map(formatValidationError),
+  };
+}
+
 export function parseDecisionProjection(source) {
   const match = source.match(
     /<!-- venture-state-projection:start -->([\s\S]*?)<!-- venture-state-projection:end -->/,
@@ -108,5 +132,12 @@ export function parseDecisionProjection(source) {
   if (!match) {
     return { valid: false, value: null, errors: ['missing venture-state-projection block'] };
   }
-  return parseYamlSource(match[1], 'decision projection');
+  const parsed = parseYamlSource(match[1], 'decision projection');
+  if (!parsed.valid) return parsed;
+  const validated = validateDecisionProjectionObject(parsed.value);
+  return {
+    valid: validated.valid,
+    value: parsed.value,
+    errors: validated.errors,
+  };
 }

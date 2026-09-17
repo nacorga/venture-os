@@ -3,6 +3,7 @@ id: "X001"
 name: ""
 status: designed
 created_at: null
+cancellation: null
 
 primary_assumption_id: ""
 why_critical: ""

@@ -56,19 +56,12 @@ function refsFromReopenRule(rule) {
   return unique([...(rule.all_of ?? []), ...(rule.any_of ?? [])]);
 }
 
-function referenceIdsFromSnapshot(snapshot) {
+function guardrailIdsFromSnapshot(snapshot) {
   const ids = new Set();
   if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return ids;
 
-  if (snapshot.next_action?.assumption_id) ids.add(snapshot.next_action.assumption_id);
-  for (const id of snapshot.blocking_assumptions ?? []) ids.add(id);
-  for (const deferral of snapshot.blocking_deferrals ?? []) if (deferral.assumption_id) ids.add(deferral.assumption_id);
-  for (const item of snapshot.do_not_build ?? []) {
-    if (item.id) ids.add(item.id);
-    for (const evidenceId of item.evidence_ids ?? []) ids.add(evidenceId);
-  }
+  for (const item of snapshot.do_not_build ?? []) if (item.id) ids.add(item.id);
   for (const item of snapshot.revisit_when ?? []) if (item.id) ids.add(item.id);
-  for (const id of refsFromReopenRule(snapshot.reopen_combination_rule)) ids.add(id);
   return ids;
 }
 
@@ -174,23 +167,71 @@ const reopenRefs = refsFromReopenRule(state.reopen_combination_rule);
 for (const id of reopenRefs) if (!revisitWhen.has(id)) fail(`reopen_combination_rule references missing trigger ${id}`);
 
 const latestDecision = state.latest_decision;
-if (latestDecision.outcome === 'PARK' && revisitWhen.size === 0) fail('PARK decision requires at least one revisit_when trigger');
+function validateDecisionSnapshotReferences(snapshot, outcome, label) {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+    fail(`${label}: decision snapshot is missing or invalid`);
+    return;
+  }
 
-if (state.version >= 2 && latestDecision.outcome === 'TEST' && latestDecision.snapshot) {
-  const snapshot = latestDecision.snapshot;
+  const snapshotAction = snapshot.next_action;
+  if (!snapshotAction || typeof snapshotAction !== 'object' || Array.isArray(snapshotAction)) {
+    fail(`${label}: snapshot next_action is missing or invalid`);
+  } else if (snapshotAction.assumption_id && !assumptions.has(snapshotAction.assumption_id)) {
+    fail(`${label}: snapshot next_action references missing assumption ${snapshotAction.assumption_id}`);
+  }
+
   const decisionBlockingIds = new Set(snapshot.blocking_assumptions ?? []);
-  const decisionDeferrals = new Set((snapshot.blocking_deferrals ?? []).map((item) => item.assumption_id));
-  const decisionAction = snapshot.next_action;
+  for (const id of decisionBlockingIds) {
+    if (!assumptions.has(id)) fail(`${label}: snapshot references missing blocking assumption ${id}`);
+  }
 
-  if (decisionBlockingIds.size && !decisionAction?.assumption_id) {
-    fail('TEST decision snapshot with blocking_assumptions requires its decision-time next_action.assumption_id');
+  const decisionDeferrals = new Set();
+  for (const deferral of snapshot.blocking_deferrals ?? []) {
+    if (decisionDeferrals.has(deferral.assumption_id)) {
+      fail(`${label}: duplicate blocking deferral for ${deferral.assumption_id}`);
+    }
+    decisionDeferrals.add(deferral.assumption_id);
+    if (!assumptions.has(deferral.assumption_id)) {
+      fail(`${label}: blocking deferral references missing assumption ${deferral.assumption_id}`);
+    }
+    if (!decisionBlockingIds.has(deferral.assumption_id)) {
+      fail(`${label}: blocking deferral ${deferral.assumption_id} is not in snapshot blocking_assumptions`);
+    }
   }
-  if (decisionAction?.assumption_id && !decisionBlockingIds.has(decisionAction.assumption_id)) {
-    fail(`TEST decision snapshot targets ${decisionAction.assumption_id}, but it is not listed in the decision snapshot blocking_assumptions`);
+
+  const snapshotDoNotBuild = new Set();
+  for (const item of snapshot.do_not_build ?? []) {
+    if (snapshotDoNotBuild.has(item.id)) fail(`${label}: duplicate do-not-build ID ${item.id}`);
+    snapshotDoNotBuild.add(item.id);
+    for (const evidenceId of item.evidence_ids ?? []) {
+      if (!evidence.has(evidenceId)) fail(`${label}: snapshot ${item.id} references missing evidence ${evidenceId}`);
+    }
   }
-  for (const blocker of decisionBlockingIds) {
-    if (blocker !== decisionAction?.assumption_id && !decisionDeferrals.has(blocker)) {
-      fail(`TEST decision snapshot blocking assumption ${blocker} has no decision-time next action and no blocking_deferrals resolution path`);
+
+  const snapshotTriggerIds = new Set();
+  for (const item of snapshot.revisit_when ?? []) {
+    if (snapshotTriggerIds.has(item.id)) fail(`${label}: duplicate revisit trigger ID ${item.id}`);
+    snapshotTriggerIds.add(item.id);
+  }
+  for (const id of refsFromReopenRule(snapshot.reopen_combination_rule)) {
+    if (!snapshotTriggerIds.has(id)) fail(`${label}: snapshot reopen_combination_rule references missing trigger ${id}`);
+  }
+
+  if (outcome === 'PARK' && snapshotTriggerIds.size === 0) {
+    fail(`${label}: PARK decision snapshot requires at least one revisit_when trigger`);
+  }
+
+  if (outcome === 'TEST') {
+    if (decisionBlockingIds.size && !snapshotAction?.assumption_id) {
+      fail(`${label}: TEST snapshot with blocking_assumptions requires its decision-time next_action.assumption_id`);
+    }
+    if (snapshotAction?.assumption_id && !decisionBlockingIds.has(snapshotAction.assumption_id)) {
+      fail(`${label}: TEST snapshot targets ${snapshotAction.assumption_id}, but it is not listed in snapshot blocking_assumptions`);
+    }
+    for (const blocker of decisionBlockingIds) {
+      if (blocker !== snapshotAction?.assumption_id && !decisionDeferrals.has(blocker)) {
+        fail(`${label}: TEST snapshot blocking assumption ${blocker} has no decision-time next action and no blocking_deferrals resolution path`);
+      }
     }
   }
 }
@@ -219,30 +260,10 @@ function verifyDecisionSnapshot(filePath, label) {
   }
 
   const projectedSnapshot = value.snapshot;
-  if (!projectedSnapshot || typeof projectedSnapshot !== 'object' || Array.isArray(projectedSnapshot)) {
-    fail(`${label}: projection snapshot is missing or invalid`);
-    return;
-  }
+  validateDecisionSnapshotReferences(projectedSnapshot, value.outcome, label);
+  if (!projectedSnapshot || typeof projectedSnapshot !== 'object' || Array.isArray(projectedSnapshot)) return;
   if (!isDeepStrictEqual(projectedSnapshot, latestDecision.snapshot)) {
     fail(`${label} decision snapshot differs from canonical latest_decision.snapshot`);
-  }
-
-  const snapshotNextAssumption = projectedSnapshot.next_action?.assumption_id;
-  if (snapshotNextAssumption && !assumptions.has(snapshotNextAssumption)) {
-    fail(`${label} snapshot next_action references missing assumption ${snapshotNextAssumption}`);
-  }
-
-  for (const id of projectedSnapshot.blocking_assumptions ?? []) {
-    if (!assumptions.has(id)) fail(`${label} snapshot references missing blocking assumption ${id}`);
-  }
-  for (const item of projectedSnapshot.do_not_build ?? []) {
-    for (const evidenceId of item.evidence_ids ?? []) {
-      if (!evidence.has(evidenceId)) fail(`${label} snapshot ${item.id} references missing evidence ${evidenceId}`);
-    }
-  }
-  const snapshotTriggerIds = new Set((projectedSnapshot.revisit_when ?? []).map((item) => item.id));
-  for (const id of refsFromReopenRule(projectedSnapshot.reopen_combination_rule)) {
-    if (!snapshotTriggerIds.has(id)) fail(`${label} snapshot reopen_combination_rule references missing trigger ${id}`);
   }
 }
 
@@ -256,7 +277,10 @@ const resultPath = path.join(path.dirname(ventureDir), 'RESULT.md');
 if (fs.existsSync(resultPath) && latestDecision.id) verifyDecisionSnapshot(resultPath, path.relative(root, resultPath));
 
 const currentKnownIds = new Set([...assumptions.keys(), ...evidence.keys(), ...doNotBuild.keys(), ...revisitWhen.keys()]);
-const historicalKnownIds = new Set();
+const historicalGuardrailIds = new Set();
+const decisionIds = new Set();
+const doNotBuildMeanings = new Map([...doNotBuild.values()].map((item) => [item.id, item.statement]));
+const revisitMeanings = new Map([...revisitWhen.values()].map((item) => [item.id, item.condition]));
 const artifactPaths = [];
 for (const dirName of ['research', 'decisions', 'learning']) {
   const dir = path.join(ventureDir, dirName);
@@ -268,15 +292,40 @@ for (const dirName of ['research', 'decisions', 'learning']) {
 
     if (dirName === 'decisions') {
       const projection = parseDecisionProjection(fs.readFileSync(filePath, 'utf8'));
-      if (projection.valid) {
-        for (const id of referenceIdsFromSnapshot(projection.value.snapshot)) historicalKnownIds.add(id);
+      if (!projection.valid) {
+        for (const error of projection.errors) fail(`${path.relative(root, filePath)}: ${error}`);
+      } else {
+        const label = path.relative(root, filePath);
+        const { decision_id: decisionId, outcome, snapshot } = projection.value;
+        if (!/^D\d{3,}$/.test(decisionId ?? '')) fail(`${label}: invalid decision_id ${decisionId ?? 'null'}`);
+        else if (decisionIds.has(decisionId)) fail(`${label}: duplicate decision ID ${decisionId}`);
+        else decisionIds.add(decisionId);
+        if (!['PROCEED', 'TEST', 'PARK'].includes(outcome)) fail(`${label}: invalid outcome ${outcome ?? 'null'}`);
+        validateDecisionSnapshotReferences(snapshot, outcome, label);
+        for (const id of guardrailIdsFromSnapshot(snapshot)) historicalGuardrailIds.add(id);
+        for (const item of snapshot.do_not_build ?? []) {
+          if (doNotBuildMeanings.has(item.id) && doNotBuildMeanings.get(item.id) !== item.statement) {
+            fail(`${label}: do-not-build ID ${item.id} is reused with a different statement`);
+          } else {
+            doNotBuildMeanings.set(item.id, item.statement);
+          }
+        }
+        for (const item of snapshot.revisit_when ?? []) {
+          if (revisitMeanings.has(item.id) && revisitMeanings.get(item.id) !== item.condition) {
+            fail(`${label}: revisit trigger ID ${item.id} is reused with a different condition`);
+          } else {
+            revisitMeanings.set(item.id, item.condition);
+          }
+        }
       }
     }
   }
 }
 if (fs.existsSync(resultPath)) artifactPaths.push(resultPath);
 
-const knownIds = new Set([...currentKnownIds, ...historicalKnownIds]);
+// Assumptions and evidence are append-only canonical records. Only retired
+// decision guardrails may resolve exclusively through a historical snapshot.
+const knownIds = new Set([...currentKnownIds, ...historicalGuardrailIds]);
 for (const filePath of artifactPaths) {
   const content = fs.readFileSync(filePath, 'utf8');
   for (const id of new Set(content.match(/\b(?:DNB\d{3,}|[AET]\d{3,})\b/g) ?? [])) {

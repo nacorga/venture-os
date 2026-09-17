@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { listExperimentFiles, experimentPreregistrationErrors, validateExperimentFile } from './experiment-utils.mjs';
-import { validateVentureFile } from './venture-utils.mjs';
+import { parseDecisionProjection, validateVentureFile } from './venture-utils.mjs';
 
 const [target] = process.argv.slice(2);
 if (!target) {
@@ -60,23 +60,55 @@ for (const filePath of listExperimentFiles(ventureDir)) {
   for (const error of experimentPreregistrationErrors(experiment)) fail(error);
 }
 
-const nextAction = venture.next_action;
-if (nextAction && typeof nextAction === 'object' && !Array.isArray(nextAction) && nextAction.experiment_id) {
-  if (!/^X[0-9]{3,}$/.test(nextAction.experiment_id)) {
-    fail(`next_action.experiment_id ${nextAction.experiment_id} is not a stable X### ID`);
-  } else if (!experiments.has(nextAction.experiment_id)) {
-    fail(`next_action references missing experiment ${nextAction.experiment_id}`);
+function validateLinkedExperimentAction(action, label, requireExecutableStatus) {
+  if (!action || typeof action !== 'object' || Array.isArray(action) || !action.experiment_id) return;
+
+  if (!/^X[0-9]{3,}$/.test(action.experiment_id)) {
+    fail(`${label}.experiment_id ${action.experiment_id} is not a stable X### ID`);
+  } else if (!experiments.has(action.experiment_id)) {
+    fail(`${label} references missing experiment ${action.experiment_id}`);
   } else {
-    const experiment = experiments.get(nextAction.experiment_id);
-    if (nextAction.type !== 'experiment') {
-      fail(`next_action references ${nextAction.experiment_id} but type is ${nextAction.type}, not experiment`);
+    const experiment = experiments.get(action.experiment_id);
+    if (action.type !== 'experiment') {
+      fail(`${label} references ${action.experiment_id} but type is ${action.type}, not experiment`);
     }
-    if (nextAction.assumption_id !== experiment.primary_assumption_id) {
-      fail(`next_action assumption ${nextAction.assumption_id ?? 'null'} does not match ${nextAction.experiment_id} primary assumption ${experiment.primary_assumption_id}`);
+    if (action.assumption_id !== experiment.primary_assumption_id) {
+      fail(`${label} assumption ${action.assumption_id ?? 'null'} does not match ${action.experiment_id} primary assumption ${experiment.primary_assumption_id}`);
     }
-    if (nextAction.success_signal !== null || nextAction.failure_signal !== null) {
-      fail(`next_action linked to ${nextAction.experiment_id} must keep success_signal/failure_signal null; preregistered criteria live in experiment.yaml`);
+    if (action.success_signal !== null || action.failure_signal !== null) {
+      fail(`${label} linked to ${action.experiment_id} must keep success_signal/failure_signal null; preregistered criteria live in experiment.yaml`);
     }
+    if (!experiment.preregistration?.locked_at || !experiment.preregistration?.design) {
+      fail(`${label} cannot reference ${action.experiment_id} before its design is preregistered`);
+    }
+    if (requireExecutableStatus && !['designed', 'running'].includes(experiment.status)) {
+      fail(`${label} cannot execute ${action.experiment_id} with status ${experiment.status}`);
+    }
+  }
+}
+
+const nextAction = venture.next_action;
+if (
+  venture.stage === 'experiment'
+  && nextAction?.type === 'experiment'
+  && !nextAction.experiment_id
+) {
+  fail('experiment-stage next_action must reference the concrete preregistered experiment with experiment_id');
+}
+validateLinkedExperimentAction(nextAction, 'next_action', true);
+
+const decisionsDir = path.join(ventureDir, 'decisions');
+if (fs.existsSync(decisionsDir)) {
+  for (const entry of fs.readdirSync(decisionsDir, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.md')) continue;
+    const filePath = path.join(decisionsDir, entry.name);
+    const projection = parseDecisionProjection(fs.readFileSync(filePath, 'utf8'));
+    if (!projection.valid) continue; // The evidence checker reports projection defects.
+    validateLinkedExperimentAction(
+      projection.value.snapshot?.next_action,
+      `${path.relative(root, filePath)} snapshot next_action`,
+      false,
+    );
   }
 }
 

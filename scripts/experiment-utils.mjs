@@ -89,7 +89,7 @@ export function experimentPreregistrationErrors(experiment) {
     return errors;
   }
 
-  if (experiment.status !== 'designed' && !hasLockedAt) {
+  if (['running', 'completed'].includes(experiment.status) && !hasLockedAt) {
     errors.push(`${experiment.id} status ${experiment.status} requires a locked preregistration`);
     return errors;
   }
@@ -104,6 +104,12 @@ export function experimentPreregistrationErrors(experiment) {
 
   if (experiment.status === 'completed' && !experiment.results?.completed_at) {
     errors.push(`${experiment.id} status completed requires results.completed_at`);
+  }
+  if (experiment.status === 'completed' && !(experiment.results?.observations?.length > 0)) {
+    errors.push(`${experiment.id} status completed requires at least one recorded observation`);
+  }
+  if (experiment.status !== 'completed' && experiment.results?.completed_at) {
+    errors.push(`${experiment.id} status ${experiment.status} cannot set results.completed_at`);
   }
 
   return errors;

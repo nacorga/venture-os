@@ -8,7 +8,7 @@ argument-hint: <venture-dir>
 
 Target venture directory: `$ARGUMENTS`
 
-Read the target venture's experiment definition and raw results.
+Read the target venture's completed experiment definition and raw results. Require at least one recorded observation and a completion timestamp before treating the experiment as completed; a cancelled experiment may inform a later decision only through an explicit learning note about the cancellation, not fabricated result evidence.
 
 Persist a learning note under `learning/` that separates:
 - observations;

@@ -67,6 +67,8 @@ npm run experiment:lock -- ventures/my-venture/experiments/<experiment>/experime
 
 Once locked, the experiment's primary assumption, target, procedure, assets, budget, signals and decision rules are preregistered. Results and status may evolve; the preregistered design may not.
 
+An execution action may point only to a preregistered experiment that is ready or running. If a draft is abandoned before execution, preserve it as `cancelled` with a timestamp and reason; it does not need a fabricated preregistration. A completed experiment must retain at least one observation and its completion timestamp.
+
 ### After an experiment
 
 Once real evidence exists:
