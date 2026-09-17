@@ -43,7 +43,10 @@
         "properties": { "derivation": {} },
         "required": ["derivation"]
       },
-      "then": { "required": ["segment"] }
+      "then": {
+        "properties": { "segment": {} },
+        "required": ["segment"]
+      }
     }
   ],
   "additionalProperties": true
