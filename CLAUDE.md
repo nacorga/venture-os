@@ -84,7 +84,9 @@ The orchestrating session owns synthesis. Subagents gather or challenge; they do
 
 ## State mutation
 
-`venture.yaml` is the canonical machine-readable state. Decision records and eval `RESULT.md` files are projections of that state, not independent places to invent a second version of the decision.
+`venture.yaml` is the canonical machine-readable state. Decision records and eval `RESULT.md` files are projections of state at a decision boundary, not independent places to invent a second version of the decision.
+
+`latest_decision.snapshot` is historical and immutable. It records the operational state that justified that decision at that moment. Current `next_action`, `blocking_assumptions`, `blocking_deferrals`, `do_not_build`, `revisit_when`, and reopen rules may legitimately evolve after learning without rewriting the snapshot. Audit historical decisions against their embedded snapshot, not against today's mutable operational state.
 
 When updating `venture.yaml`:
 
@@ -94,11 +96,11 @@ When updating `venture.yaml`:
 - prefer explicit `unknown` over invented values;
 - use stable IDs for `do_not_build` (`DNB###`) and `revisit_when` (`T###`);
 - never refer to those lists by ordinal position such as "item 4" or "Trigger 2";
-- keep `next_action` structured and single-valued, with one `N###` ID, one primary assumption when applicable, one instruction, and explicit success/failure signals;
+- keep `next_action` structured and single-valued, with one `N###` ID, one primary assumption when applicable, and one instruction; use explicit success/failure signals when the action owns those criteria, but for execution of a concrete preregistered experiment set `experiment_id: X###` and keep `success_signal` / `failure_signal` null because `experiment.yaml` owns the immutable criteria;
 - keep `next_action.depends_on` empty in version 2; canonical state does not preserve historical actions, so a dependency on an old `N###` is unresolvable;
 - apply segment discipline to the venture's own ICP as strictly as to external evidence: split materially different populations or record why transport is causally valid;
 - when evidence is linked across different segment labels, require an explicit `transport_justification`, and verify that the evidence measures the quantity the assumption actually asserts;
-- when a `TEST` decision has multiple `blocking_assumptions`, the active blocker must be targeted by `next_action`; every other blocker must have an explicit `blocking_deferrals` entry explaining its later resolution path.
+- when a `TEST` decision is issued with multiple `blocking_assumptions`, its decision-time snapshot must target one active blocker with `next_action`; every other blocker must have an explicit `blocking_deferrals` entry explaining its later resolution path. After experiment learning, current `next_action` may legitimately become a new `decision` action with `assumption_id: null`; do not preserve the old TEST targeting rule by mutating the historical snapshot.
 
 When a gate changes state, update `venture.yaml` first. Then render the decision record from canonical state. Do not paraphrase `next_action`, reopen triggers, or do-not-build IDs differently in the decision record.
 
