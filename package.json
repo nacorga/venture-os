@@ -12,6 +12,7 @@
     "venture:new": "node scripts/new-venture.mjs",
     "venture:check": "node scripts/check-venture.mjs",
     "evidence:check": "node scripts/check-evidence-consistency.mjs",
+    "experiment:lock": "node scripts/lock-experiment.mjs",
     "eval:new": "node scripts/new-eval-run.mjs",
     "eval:freeze": "node scripts/freeze-eval-run.mjs",
     "eval:verify": "node scripts/verify-eval-run.mjs",
