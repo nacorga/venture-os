@@ -78,7 +78,18 @@
     "name": { "type": "string" },
     "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
     "stage": { "enum": ["concept", "research", "validation", "positioning", "experiment", "learning", "build", "parked"] },
-    "thesis": { "type": "object", "required": ["problem", "icp", "solution", "business_model", "distribution"] },
+    "thesis": {
+      "type": "object",
+      "required": ["problem", "icp", "solution", "business_model", "distribution"],
+      "properties": {
+        "problem": { "type": "string" },
+        "icp": { "type": "string" },
+        "solution": { "type": "string" },
+        "business_model": { "type": "string" },
+        "distribution": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
     "assumptions": { "type": "array", "items": { "$ref": "https://venture-os.dev/schemas/assumption-v1.schema.json" } },
     "evidence_index": { "type": "array", "items": { "$ref": "https://venture-os.dev/schemas/evidence-v1.schema.json" } },
     "latest_decision": {
