@@ -22,6 +22,8 @@ Create stable first-party evidence IDs for material observations.
 
 Update the venture state without deleting contrary evidence.
 
-Replace `next_action` with the next stable `N###` object whose single instruction is to run `venture-decide` again. Set `type: decision`; point `assumption_id` at the assumption most changed by the experiment when one clearly dominates, otherwise null.
+Replace current `next_action` with the next stable `N###` object whose single instruction is to run `venture-decide` again. Set `type: decision`; point `assumption_id` at the assumption most changed by the experiment when one clearly dominates, otherwise null.
+
+Never rewrite `latest_decision.snapshot` while recording learning. The snapshot remains the immutable state that justified the prior decision until a new decision replaces it.
 
 Do not automatically declare success because the experiment generated activity.

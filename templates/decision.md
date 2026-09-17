@@ -22,36 +22,47 @@ Assumptions that remain unresolved.
 
 ## Blocking assumptions and deferrals
 
-List the canonical `blocking_assumptions`. Identify the one targeted by `next_action.assumption_id`. For every additional blocker, copy its `blocking_deferrals` reason (and `until` when present) from `venture.yaml`. A blocker with no current action or explicit deferral is an invalid state, not a narrative gap to paper over here.
+List the decision-time `blocking_assumptions`. Identify the one targeted by the decision-time `next_action.assumption_id`. For every additional blocker, copy its decision-time deferral reason (and `until` when present).
 
 ## Rationale
 
 Concise explanation of why this outcome is justified now.
 
-## Canonical state projection
+## Decision snapshot
 
-This block is a projection of `venture.yaml`, not an independently authored summary. Update canonical state first, then copy these values exactly.
+This block is an immutable snapshot of the decision-time state. It is copied from `latest_decision.snapshot`, not from the current operational fields after the workflow advances.
 
 <!-- venture-state-projection:start -->
 decision_id: <D###>
-next_action_id: <N###>
-do_not_build_ids: [<DNB###>]
-revisit_when_ids: [<T###>]
-reopen_rule_refs: [<T###>]
+outcome: <PROCEED|TEST|PARK>
+snapshot:
+  next_action:
+    id: <N###>
+    type: <type>
+    assumption_id: <A###|null>
+    instruction: "<instruction>"
+    success_signal: <string|null>
+    failure_signal: <string|null>
+    depends_on: []
+  blocking_assumptions: [<A###>]
+  blocking_deferrals: []
+  do_not_build: []
+  revisit_when: []
+  reopen_combination_rule: null
 <!-- venture-state-projection:end -->
 
 ## Next action
 
-Copy the canonical `next_action.instruction` and its success/failure signals. Do not paraphrase or add a second action.
+Explain the decision-time next action using the immutable snapshot above. Later workflow stages may replace the current canonical `next_action`; do not rewrite this decision when that happens.
 
 ## Do not build
 
-Reference stable `DNB###` IDs. Never cite these by ordinal position.
+Reference stable `DNB###` IDs from the decision snapshot. Never cite these by ordinal position.
 
 ## Revisit when
 
-For PARK, reference stable `T###` IDs and reproduce the canonical combination rule semantically. Never use "Trigger 1", "item 4", or other positional references.
+For PARK, reference stable `T###` IDs and reproduce the decision snapshot combination rule semantically. Never use "Trigger 1", "item 4", or other positional references.
 
 ## Supersedes
 
-Previous decision ID if applicable. Never delete the old record.
+Previous decision ID if applicable. Never delete or rewrite the old record.

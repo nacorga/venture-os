@@ -47,6 +47,7 @@ latest_decision:
   id: null
   outcome: null
   path: null
+  snapshot: null
 
 blocking_assumptions: []
 blocking_deferrals: []

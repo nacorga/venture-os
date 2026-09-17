@@ -1,11 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://venture-os.dev/schemas/assumption-v1.schema.json",
   "title": "Assumption",
   "type": "object",
   "required": ["id", "statement", "category", "criticality", "status", "evidence_ids"],
   "properties": {
     "id": { "type": "string", "pattern": "^A[0-9]{3,}$" },
-    "statement": { "type": "string" },
+    "statement": { "type": "string", "minLength": 1 },
     "category": {
       "enum": ["problem", "customer", "frequency", "urgency", "willingness_to_pay", "distribution", "competition", "solution", "retention", "economics", "regulatory", "operational", "other"]
     },
@@ -14,7 +15,8 @@
     "segment": { "type": ["string", "null"] },
     "evidence_ids": {
       "type": "array",
-      "items": { "type": "string", "pattern": "^E[0-9]{3,}$" }
+      "items": { "type": "string", "pattern": "^E[0-9]{3,}$" },
+      "uniqueItems": true
     }
   },
   "additionalProperties": true

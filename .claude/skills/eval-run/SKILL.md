@@ -47,22 +47,13 @@ During this skill:
    - do-not-build items referenced by `DNB###` ID;
    - revisit triggers referenced by `T###` ID when applicable;
    - concise retrospective on where confidence remains weak.
-8. Include this exact projection block shape in `RESULT.md` and fill it from canonical state:
-
-   `<!-- venture-state-projection:start -->`
-   `decision_id: D###`
-   `next_action_id: N###`
-   `do_not_build_ids: [DNB###]`
-   `revisit_when_ids: [T###]`
-   `reopen_rule_refs: [T###]`
-   `<!-- venture-state-projection:end -->`
-
+8. Include the same immutable projection shape used by `templates/decision.md`: `decision_id`, `outcome`, and the full `latest_decision.snapshot`. Copy the snapshot exactly; do not reconstruct it from current operational fields.
 9. Run `npm run evidence:check -- <run-dir>/venture` after `RESULT.md` exists so projection drift is caught before freeze.
 10. Do not score the run and do not read evaluator references.
 
 ## Completion criteria
 
-The venture directory is internally consistent, the decision is auditable, `RESULT.md` matches canonical state, and the consistency checker passes.
+The venture directory is internally consistent, the decision is auditable, `RESULT.md` matches the immutable decision snapshot, and the consistency checker passes.
 
 Finish by telling the user only the next canonical command:
 

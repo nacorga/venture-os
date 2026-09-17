@@ -43,6 +43,9 @@ latest_decision:
   id: null
   outcome: null
   path: null
+  snapshot: null
+# When a decision is created, snapshot the decision-time operational fields here.
+# The snapshot is immutable; current fields below may evolve after the decision.
 
 blocking_assumptions: []
 blocking_deferrals: []
@@ -67,7 +70,7 @@ next_action:
   failure_signal: null
   depends_on: []
 # Version 2 stores only the current action. Keep depends_on empty; historical N###
-# dependencies are not representable until an action-history model exists.
+# dependencies are represented by immutable decision snapshots, not action history.
 
 revisit_when: []
 # - id: T001

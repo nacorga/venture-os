@@ -1,152 +1,146 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://venture-os.dev/schemas/venture-v2.schema.json",
   "title": "VentureState",
   "type": "object",
-  "required": [
-    "version",
-    "name",
-    "slug",
-    "stage",
-    "thesis",
-    "assumptions",
-    "evidence_index",
-    "next_action"
-  ],
-  "properties": {
-    "version": {
-      "type": "integer",
-      "enum": [1, 2]
-    },
-    "name": { "type": "string" },
-    "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
-    "stage": {
-      "enum": ["concept", "research", "validation", "positioning", "experiment", "learning", "build", "parked"]
-    },
-    "thesis": {
+  "required": ["version", "name", "slug", "stage", "thesis", "assumptions", "evidence_index", "latest_decision", "blocking_assumptions", "blocking_deferrals", "do_not_build", "next_action", "revisit_when", "reopen_combination_rule"],
+  "$defs": {
+    "nextAction": {
       "type": "object",
-      "required": ["problem", "icp", "solution", "business_model", "distribution"]
+      "required": ["id", "type", "assumption_id", "instruction", "success_signal", "failure_signal", "depends_on"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^N[0-9]{3,}$" },
+        "type": { "enum": ["normalize", "research", "challenge", "decision", "experiment", "outreach", "positioning", "build", "other"] },
+        "assumption_id": { "type": ["string", "null"], "pattern": "^A[0-9]{3,}$" },
+        "instruction": { "type": "string", "minLength": 1 },
+        "success_signal": { "type": ["string", "null"] },
+        "failure_signal": { "type": ["string", "null"] },
+        "depends_on": { "type": "array", "items": { "type": "string", "pattern": "^N[0-9]{3,}$" }, "uniqueItems": true }
+      },
+      "additionalProperties": true
     },
-    "assumptions": { "type": "array" },
-    "evidence_index": { "type": "array" },
-    "latest_decision": { "type": "object" },
-    "blocking_assumptions": {
-      "type": "array",
-      "items": { "type": "string", "pattern": "^A[0-9]{3,}$" }
+    "blockingDeferral": {
+      "type": "object",
+      "required": ["assumption_id", "reason"],
+      "properties": {
+        "assumption_id": { "type": "string", "pattern": "^A[0-9]{3,}$" },
+        "reason": { "type": "string", "minLength": 1 },
+        "until": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
     },
-    "blocking_deferrals": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["assumption_id", "reason"],
-        "properties": {
-          "assumption_id": { "type": "string", "pattern": "^A[0-9]{3,}$" },
-          "reason": { "type": "string", "minLength": 1 },
-          "until": { "type": ["string", "null"] }
-        },
-        "additionalProperties": false
-      }
+    "doNotBuild": {
+      "type": "object",
+      "required": ["id", "statement"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^DNB[0-9]{3,}$" },
+        "statement": { "type": "string", "minLength": 1 },
+        "reason": { "type": ["string", "null"] },
+        "evidence_ids": { "type": "array", "items": { "type": "string", "pattern": "^E[0-9]{3,}$" }, "uniqueItems": true }
+      },
+      "additionalProperties": true
     },
-    "next_action": {
-      "oneOf": [
-        { "type": "string" },
-        {
-          "type": "object",
-          "required": ["id", "type", "assumption_id", "instruction", "success_signal", "failure_signal"],
-          "properties": {
-            "id": { "type": "string", "pattern": "^N[0-9]{3,}$" },
-            "type": { "enum": ["normalize", "research", "challenge", "decision", "experiment", "outreach", "positioning", "build", "other"] },
-            "assumption_id": { "type": ["string", "null"], "pattern": "^A[0-9]{3,}$" },
-            "instruction": { "type": "string" },
-            "success_signal": { "type": ["string", "null"] },
-            "failure_signal": { "type": ["string", "null"] },
-            "depends_on": {
-              "type": "array",
-              "items": { "type": "string", "pattern": "^N[0-9]{3,}$" }
-            }
-          },
-          "additionalProperties": true
-        }
-      ]
+    "revisitTrigger": {
+      "type": "object",
+      "required": ["id", "condition"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^T[0-9]{3,}$" },
+        "condition": { "type": "string", "minLength": 1 },
+        "check": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
     },
-    "do_not_build": {
-      "type": "array",
-      "items": {
-        "oneOf": [
-          { "type": "string" },
-          {
-            "type": "object",
-            "required": ["id", "statement"],
-            "properties": {
-              "id": { "type": "string", "pattern": "^DNB[0-9]{3,}$" },
-              "statement": { "type": "string" },
-              "reason": { "type": ["string", "null"] },
-              "evidence_ids": {
-                "type": "array",
-                "items": { "type": "string", "pattern": "^E[0-9]{3,}$" }
-              }
-            },
-            "additionalProperties": true
-          }
-        ]
-      }
-    },
-    "revisit_when": {
-      "type": "array",
-      "items": {
-        "oneOf": [
-          { "type": "string" },
-          {
-            "type": "object",
-            "required": ["id", "condition"],
-            "properties": {
-              "id": { "type": "string", "pattern": "^T[0-9]{3,}$" },
-              "condition": { "type": "string" },
-              "check": { "type": ["string", "null"] }
-            },
-            "additionalProperties": true
-          }
-        ]
-      }
-    },
-    "reopen_combination_rule": {
+    "reopenRule": {
       "type": ["object", "null"],
       "properties": {
-        "all_of": {
-          "type": "array",
-          "items": { "type": "string", "pattern": "^T[0-9]{3,}$" }
-        },
-        "any_of": {
-          "type": "array",
-          "items": { "type": "string", "pattern": "^T[0-9]{3,}$" }
-        },
+        "all_of": { "type": "array", "items": { "type": "string", "pattern": "^T[0-9]{3,}$" }, "uniqueItems": true },
+        "any_of": { "type": "array", "items": { "type": "string", "pattern": "^T[0-9]{3,}$" }, "uniqueItems": true },
         "note": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "decisionSnapshot": {
+      "type": "object",
+      "required": ["next_action", "blocking_assumptions", "blocking_deferrals", "do_not_build", "revisit_when", "reopen_combination_rule"],
+      "properties": {
+        "next_action": { "$ref": "#/$defs/nextAction" },
+        "blocking_assumptions": { "type": "array", "items": { "type": "string", "pattern": "^A[0-9]{3,}$" }, "uniqueItems": true },
+        "blocking_deferrals": { "type": "array", "items": { "$ref": "#/$defs/blockingDeferral" } },
+        "do_not_build": { "type": "array", "items": { "$ref": "#/$defs/doNotBuild" } },
+        "revisit_when": { "type": "array", "items": { "$ref": "#/$defs/revisitTrigger" } },
+        "reopen_combination_rule": { "$ref": "#/$defs/reopenRule" }
       },
       "additionalProperties": false
     }
   },
+  "properties": {
+    "version": { "type": "integer", "enum": [1, 2] },
+    "name": { "type": "string" },
+    "slug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "stage": { "enum": ["concept", "research", "validation", "positioning", "experiment", "learning", "build", "parked"] },
+    "thesis": {
+      "type": "object",
+      "required": ["problem", "icp", "solution", "business_model", "distribution"],
+      "properties": {
+        "problem": { "type": "string" },
+        "icp": { "type": "string" },
+        "solution": { "type": "string" },
+        "business_model": { "type": "string" },
+        "distribution": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "assumptions": { "type": "array", "items": { "$ref": "https://venture-os.dev/schemas/assumption-v1.schema.json" } },
+    "evidence_index": { "type": "array", "items": { "$ref": "https://venture-os.dev/schemas/evidence-v1.schema.json" } },
+    "latest_decision": {
+      "type": "object",
+      "required": ["id", "outcome", "path", "snapshot"],
+      "properties": {
+        "id": { "type": ["string", "null"], "pattern": "^D[0-9]{3,}$" },
+        "outcome": { "type": ["string", "null"], "enum": ["PROCEED", "TEST", "PARK", null] },
+        "path": { "type": ["string", "null"] },
+        "snapshot": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/decisionSnapshot" }] }
+      },
+      "additionalProperties": false
+    },
+    "blocking_assumptions": { "type": "array", "items": { "type": "string", "pattern": "^A[0-9]{3,}$" }, "uniqueItems": true },
+    "blocking_deferrals": { "type": "array", "items": { "$ref": "#/$defs/blockingDeferral" } },
+    "next_action": { "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/nextAction" }] },
+    "do_not_build": { "type": "array", "items": { "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/doNotBuild" }] } },
+    "revisit_when": { "type": "array", "items": { "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/revisitTrigger" }] } },
+    "reopen_combination_rule": { "$ref": "#/$defs/reopenRule" }
+  },
   "allOf": [
     {
-      "if": { "properties": { "version": { "const": 2 } } },
+      "if": { "properties": { "version": { "const": 2 } }, "required": ["version"] },
       "then": {
         "properties": {
-          "next_action": { "type": "object" },
-          "blocking_deferrals": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["assumption_id", "reason"]
-            }
-          },
-          "do_not_build": {
-            "items": {
-              "type": "object",
-              "required": ["id", "statement"]
-            }
-          },
-          "revisit_when": {
-            "items": {
-              "type": "object",
-              "required": ["id", "condition"]
+          "next_action": { "$ref": "#/$defs/nextAction" },
+          "blocking_deferrals": { "type": "array", "items": { "$ref": "#/$defs/blockingDeferral" } },
+          "do_not_build": { "type": "array", "items": { "$ref": "#/$defs/doNotBuild" } },
+          "revisit_when": { "type": "array", "items": { "$ref": "#/$defs/revisitTrigger" } }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "latest_decision": {
+            "type": "object",
+            "properties": { "id": { "type": "string" } },
+            "required": ["id"]
+          }
+        },
+        "required": ["latest_decision"]
+      },
+      "then": {
+        "properties": {
+          "latest_decision": {
+            "type": "object",
+            "properties": {
+              "outcome": { "type": "string", "enum": ["PROCEED", "TEST", "PARK"] },
+              "path": { "type": "string", "minLength": 1 },
+              "snapshot": { "$ref": "#/$defs/decisionSnapshot" }
             }
           }
         }
