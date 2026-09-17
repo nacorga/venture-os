@@ -28,8 +28,20 @@
       "properties": {
         "model": { "type": "string" },
         "formula_or_method": { "type": "string" },
-        "inputs": { "type": ["object", "array", "string", "null"] },
-        "applicability_conditions": { "type": ["string", "array"] },
+        "inputs": {
+          "anyOf": [
+            { "type": "object" },
+            { "type": "array" },
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "applicability_conditions": {
+          "anyOf": [
+            { "type": "string" },
+            { "type": "array" }
+          ]
+        },
         "independently_verified": { "type": "boolean" },
         "verification_note": { "type": ["string", "null"] },
         "sensitivity_notes": { "type": ["string", "null"] }
