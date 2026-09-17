@@ -19,6 +19,7 @@ const expected = [
   '.claude/agents',
   '.claude/skills',
   '.github/dependabot.yml',
+  '.github/workflows/release.yml',
   '.github/workflows/validate.yml',
   '.github/ISSUE_TEMPLATE/bug.yml',
   '.github/ISSUE_TEMPLATE/case-contribution.yml',
@@ -100,6 +101,10 @@ let pkg = null;
 if (fs.existsSync(packagePath)) {
   try {
     pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(pkg.version ?? '')) {
+      fail('package.json version must be a stable semantic version');
+    }
+    if (pkg.private !== true) fail('package.json must remain private; releases are distributed through GitHub');
     if (pkg.scripts?.test !== 'node --test') fail('package.json must expose the deterministic node --test suite');
     if (pkg.scripts?.['case:new'] !== 'node scripts/new-case.mjs') fail('package.json missing canonical case:new script');
     if (pkg.scripts?.['case:validate'] !== 'node scripts/validate-case.mjs') fail('package.json missing canonical case:validate script');
@@ -117,6 +122,7 @@ if (fs.existsSync(lockPath) && pkg) {
   try {
     const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
     if (lock.lockfileVersion !== 3) fail('package-lock.json must use lockfileVersion 3');
+    if (lock.version !== pkg.version) fail('package-lock.json version must match package.json');
     const rootPackage = lock.packages?.[''];
     if (!rootPackage) fail('package-lock.json missing root package metadata');
     else {
@@ -145,6 +151,36 @@ if (fs.existsSync(workflowPath)) {
   if (!workflow.includes('npm ci --ignore-scripts --no-audit --no-fund')) fail('Validate workflow must install from package-lock with npm ci');
   if (!workflow.includes('run: npm test')) fail('Validate workflow must run deterministic tests');
   if (workflow.includes('npm install --no-package-lock')) fail('Validate workflow must not bypass package-lock');
+}
+
+const releaseWorkflowPath = path.join(root, '.github', 'workflows', 'release.yml');
+if (fs.existsSync(releaseWorkflowPath)) {
+  const workflow = fs.readFileSync(releaseWorkflowPath, 'utf8');
+  const requiredFragments = [
+    'workflow_dispatch:',
+    'contents: write',
+    'group: release',
+    "github.ref != 'refs/heads/main'",
+    'fetch-depth: 0',
+    'node-version: 24',
+    'npm ci --ignore-scripts --no-audit --no-fund',
+    'run: npm test',
+    'run: npm run repo:check',
+    'run: npm run case:validate',
+    'npm run venture:new -- release-smoke',
+    'npm run venture:check -- release-smoke',
+    'npm run eval:new -- inventory-monitoring-saas release-smoke',
+    'gh release create',
+    '--target "$GITHUB_SHA"',
+    '--generate-notes',
+    '--fail-on-no-commits',
+  ];
+  for (const fragment of requiredFragments) {
+    if (!workflow.includes(fragment)) fail(`Release workflow missing required control: ${fragment}`);
+  }
+  for (const forbiddenFragment of ['npm publish', 'packages: write', 'id-token: write', 'skip_tests']) {
+    if (workflow.includes(forbiddenFragment)) fail(`Release workflow must not contain: ${forbiddenFragment}`);
+  }
 }
 
 const dependabotPath = path.join(root, '.github', 'dependabot.yml');

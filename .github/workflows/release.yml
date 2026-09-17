@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Validate and publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the default branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Releases must be run from main; selected ref was ${GITHUB_REF}." >&2
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run deterministic tests
+        run: npm test
+
+      - name: Check repository structure and release metadata
+        run: npm run repo:check
+
+      - name: Validate Case Library
+        run: npm run case:validate
+
+      - name: Smoke venture onboarding scaffold
+        run: |
+          npm run venture:new -- release-smoke "A B2B SaaS that helps small teams detect costly workflow anomalies before they become incidents"
+          npm run venture:check -- release-smoke
+
+      - name: Smoke eval input bridge
+        run: npm run eval:new -- inventory-monitoring-saas release-smoke
+
+      - name: Resolve release version
+        id: version
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Release version: v${VERSION}"
+
+      - name: Ensure the version is unpublished
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "Tag v${VERSION} already exists." >&2
+            exit 1
+          fi
+          if gh release view "v${VERSION}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v${VERSION} already exists." >&2
+            exit 1
+          fi
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "v${VERSION}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Venture OS v${VERSION}" \
+            --generate-notes \
+            --fail-on-no-commits
+
+      - name: Verify published tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          TAG_SHA="$(git ls-remote origin "refs/tags/v${VERSION}" | awk '{print $1}')"
+          if [[ "$TAG_SHA" != "$GITHUB_SHA" ]]; then
+            echo "Published tag points to ${TAG_SHA:-<missing>}; expected ${GITHUB_SHA}." >&2
+            exit 1
+          fi
+          gh release view "v${VERSION}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json tagName,name,isDraft,isPrerelease,url
