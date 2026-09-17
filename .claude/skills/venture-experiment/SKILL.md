@@ -27,4 +27,6 @@ Prefer behavioral evidence over stated preference.
 
 Do not build production software if a smaller test can resolve the same uncertainty.
 
-Set the venture stage to `experiment`. Replace `next_action` with the next stable `N###` object whose single instruction is to execute this experiment. Set `type: experiment`, `assumption_id` to the experiment's primary assumption, and copy the experiment's pre-registered success/failure signals into canonical state rather than paraphrasing them.
+Set the venture stage to `experiment`. Replace current `next_action` with the next stable `N###` object whose single instruction is to execute this experiment. Set `type: experiment`, `assumption_id` to the experiment's primary assumption, and copy the experiment's pre-registered success/failure signals into canonical state rather than paraphrasing them.
+
+Never rewrite `latest_decision.snapshot` when current operational state advances. The snapshot records the state that justified the prior decision.
