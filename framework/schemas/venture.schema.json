@@ -12,6 +12,7 @@
         "id": { "type": "string", "pattern": "^N[0-9]{3,}$" },
         "type": { "enum": ["normalize", "research", "challenge", "decision", "experiment", "outreach", "positioning", "build", "other"] },
         "assumption_id": { "type": ["string", "null"], "pattern": "^A[0-9]{3,}$" },
+        "experiment_id": { "type": ["string", "null"], "pattern": "^X[0-9]{3,}$" },
         "instruction": { "type": "string", "minLength": 1 },
         "success_signal": { "type": ["string", "null"] },
         "failure_signal": { "type": ["string", "null"] },
