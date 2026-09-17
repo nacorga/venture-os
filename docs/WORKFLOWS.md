@@ -23,6 +23,8 @@ npm run venture:new -- my-venture "One sentence idea"
 claude
 ```
 
+Generated workspaces under `ventures/` are private-by-default and gitignored.
+
 Then, inside Claude Code:
 
 ```text
@@ -55,6 +57,16 @@ A critical assumption blocks progression. Design the cheapest credible experimen
 
 Stop. Do not continue the workflow until a recorded revisit condition or genuinely new evidence justifies reopening the venture.
 
+### Before executing an experiment
+
+`/venture-experiment` owns the procedure and uses the deterministic lock primitive before execution:
+
+```bash
+npm run experiment:lock -- ventures/my-venture/experiments/<experiment>/experiment.yaml
+```
+
+Once locked, the experiment's primary assumption, target, procedure, assets, budget, signals and decision rules are preregistered. Results and status may evolve; the preregistered design may not.
+
 ### After an experiment
 
 Once real evidence exists:
@@ -74,7 +86,7 @@ The venture directory is the argument. Do not append a second paragraph explaini
 
 ## Public benchmark
 
-Benchmark inputs come from canonical Case Library entries under `cases/<case-id>/case.yaml`. Evaluator expectations remain separate under `evals/reference/`.
+Benchmark inputs come from canonical Case Library entries under `cases/<case-id>/case.yaml`. Evaluator expectations remain separate under `evals/reference/` during execution.
 
 ### Session A — create
 
@@ -82,7 +94,7 @@ Benchmark inputs come from canonical Case Library entries under `cases/<case-id>
 /eval-new inventory-monitoring-saas claude-opus-5
 ```
 
-Copy only the generated run ID.
+Creation records the effective framework hash, case hash, git state, model label and evaluator-source hashes without exposing evaluator content to the run. Copy only the generated run ID.
 
 ### Session B — isolated run
 
@@ -98,6 +110,8 @@ When it finishes:
 /eval-freeze <run-id>
 ```
 
+Freeze requires a schema-valid venture, a complete gate decision, a passing integrity check, and the same effective runtime/evaluator basis recorded at creation. Only after those checks pass is the evaluator bundle copied under the frozen run.
+
 ### Session C — score
 
 Open another fresh Claude Code session:
@@ -106,9 +120,11 @@ Open another fresh Claude Code session:
 /eval-score <run-id>
 ```
 
+Scoring uses the frozen `evaluator/` bundle, never the repository's live reference/rubric as a silent substitute.
+
 Fresh-session boundaries are part of the evaluation design, not optional ceremony.
 
-Real or sensitive holdout benchmarks stay outside the public repository and should run against a pinned public commit.
+Real or sensitive holdout benchmarks stay outside the public repository and should run against a pinned public commit or recorded effective runtime hash.
 
 ## Low-level scripts
 
@@ -118,6 +134,7 @@ Scripts exist for deterministic mechanics and automation. Use them when debuggin
 npm run venture:new -- <slug> "<idea>"
 npm run venture:check -- <slug>
 npm run evidence:check -- <venture-dir>
+npm run experiment:lock -- <experiment-dir|experiment.yaml>
 npm run case:new -- <id> "<title>" "<statement>" <category>
 npm run case:validate -- [<case-id|path>]
 npm run eval:new -- <case> <model-label>

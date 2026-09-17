@@ -6,15 +6,37 @@ All public inputs committed to this repository must be synthetic, generic, and s
 
 ## Isolation model
 
-Evaluation now uses three distinct artifacts:
+Evaluation uses four distinct artifact classes:
 
 - `cases/<case-id>/case.yaml` — canonical public input visible to the run;
 - `evals/reference/<case-id>.yaml` — evaluator-only expectations, forbidden during the run;
-- `evals/runs/<run-id>/` — immutable record of one execution after it is frozen.
+- `evals/runs/<run-id>/` — record of one execution;
+- `evals/runs/<run-id>/evaluator/` — evaluator reference, rubric and scoring contract copied **only when the run is frozen**.
 
 The Case Library is broader than the benchmark suite. A case only becomes part of the scored regression suite when a maintainer adds a matching evaluator reference under `evals/reference/`.
 
-The active agent must never read `evals/reference/`, previous runs, or git history to infer expected answers. If reference content has already leaked into the active session, mark that run contaminated and start a fresh session.
+The active agent must never read `evals/reference/`, previous runs, evaluator bundles, or git history to infer expected answers. If reference content has already leaked into the active session, mark that run contaminated and start a fresh session.
+
+## Reproducibility model
+
+`eval:new` records the effective runtime, not only `HEAD`:
+
+- git commit;
+- whether the worktree was dirty;
+- a SHA-256 of the Venture OS runtime files used by the run;
+- a SHA-256 of the case snapshot;
+- hashes of the evaluator reference, rubric and scoring skill without exposing their contents to the active agent;
+- the user-supplied model label.
+
+`eval:freeze` refuses to freeze if the case or effective runtime changed after creation, if evaluator sources changed, if canonical venture state is schema-invalid, if no complete gate decision exists, or if `evidence:check` fails.
+
+Only after those checks pass does freeze create `evaluator/` and copy the evaluator-only inputs into the run. The frozen digest includes that evaluator bundle. `SCORE.md` remains outside the digest so an independent rescore can replace it without mutating the run.
+
+This separates three questions that should not be conflated:
+
+1. **artifact integrity** — did frozen files change?;
+2. **run validity** — did the run finish with internally consistent canonical state?;
+3. **evaluation provenance** — which framework, reference, rubric and scoring contract produced the score?
 
 ## Canonical user workflow
 
@@ -26,7 +48,7 @@ In Claude Code:
 /eval-new inventory-monitoring-saas claude-opus-5
 ```
 
-`eval-new` wraps the deterministic `npm run eval:new` primitive, validates the canonical Case Library entry, snapshots it into the run, and returns a run ID. It deliberately does not execute the benchmark in the same session.
+`eval-new` wraps the deterministic `npm run eval:new` primitive, validates the canonical Case Library entry, snapshots it into the run, records effective runtime provenance, and returns a run ID. It deliberately does not execute the benchmark in the same session.
 
 ### 2. Run — fresh Claude Code session
 
@@ -40,13 +62,15 @@ In Claude Code:
 /eval-freeze <run-id>
 ```
 
+Freeze performs semantic validation before creating the immutable marker and evaluator bundle.
+
 ### 4. Score — another fresh Claude Code session
 
 ```text
 /eval-score <run-id>
 ```
 
-Only this stage may read `evals/reference/<case>.yaml` after integrity verification. Scoring requires a matching evaluator reference; ordinary Case Library entries do not.
+Scoring reads only the frozen evaluator bundle for that run. It must not silently substitute the repository's current reference or current rubric.
 
 ### Low-level primitives
 
@@ -100,9 +124,15 @@ Their canonical input lives in `cases/`; their evaluator-only coverage expectati
 
 A methodology that only works for one business model is not yet a general Venture OS.
 
+### Full-cycle regression
+
+First-decision benchmarks are necessary but not sufficient. The deterministic suite also exercises a sequential integrity cycle: an initial decision is preserved, contradictory evidence arrives, operational state advances through learning, and a second decision is recorded without rewriting the first snapshot.
+
+This catches history-preservation and state-transition regressions. A future model-level benchmark should extend the public scored suite with staged evidence reveals so behavior 10 is measured directly rather than inferred from a single decision.
+
 ## Private benchmark boundary
 
-Do not commit real venture names, customer information, proprietary research, private outcomes, or evaluator references derived from sensitive projects here. Keep those benchmarks outside this repository and run them against a pinned Venture OS commit.
+Do not commit real venture names, customer information, proprietary research, private outcomes, or evaluator references derived from sensitive projects here. Keep those benchmarks outside this repository and run them against a pinned Venture OS commit or recorded effective runtime hash.
 
 This gives the project three useful layers:
 
@@ -116,10 +146,10 @@ See `docs/PUBLICATION.md`.
 
 When changing a skill or agent:
 
-1. create a run with `/eval-new` so commit provenance is recorded;
+1. create a run with `/eval-new` so effective runtime and evaluator-source provenance are recorded;
 2. execute each benchmark in a fresh session with `/eval-run`;
 3. freeze each run with `/eval-freeze`;
-4. score in a fresh session with `/eval-score`;
+4. score in a fresh session with `/eval-score` using only the frozen evaluator bundle;
 5. compare against previous frozen runs;
 6. keep changes that improve general behavior rather than one case only.
 
