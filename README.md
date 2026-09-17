@@ -6,7 +6,7 @@
 
 An open-source, evidence-first operating system for turning business ideas into tested decisions with AI agents.
 
-**Venture OS v0.1 is Claude Code-first.** It helps founders and builders move from an idea to evidence, an auditable decision, and a real-world experiment without making “build the product” the default answer.
+**Venture OS is currently Claude Code-first.** It helps founders and builders move from an idea to evidence, an auditable decision, and a real-world experiment without making “build the product” the default answer.
 
 ```text
 Idea → Research → Challenge → Decision → Experiment → Learn
