@@ -30,12 +30,13 @@ If you know the current session authored the run, stop and tell the user to open
 ## Preconditions
 
 1. `<run-dir>` must contain `FROZEN.json`.
-2. Run `npm run eval:verify -- $ARGUMENTS` and require a successful integrity check before scoring.
-3. Do not change `venture/`, `RESULT.md`, `case.yaml`, or any frozen run artifact.
-4. Read the case name from `<run-dir>/metadata.json`.
-5. Only after integrity verification may you read `evals/reference/<case>.yaml`.
-6. Read `evals/README.md` for the common scoring rubric.
-7. If a prior `SCORE.md` exists, keep it closed until the independent score is fully determined.
+2. Run `npm run eval:verify -- $ARGUMENTS` and require a successful frozen-artifact integrity check.
+3. Run `npm run eval:context -- $ARGUMENTS` and require the evaluator rubric/reference hashes to match the versions pinned when the run was created.
+4. Do not change `venture/`, `RESULT.md`, `case.yaml`, or any frozen run artifact.
+5. Read the case name and provenance from `<run-dir>/metadata.json`.
+6. Only after integrity and evaluator-context verification may you read `evals/reference/<case>.yaml`.
+7. Read `evals/README.md` for the common scoring rubric.
+8. If a prior `SCORE.md` exists, keep it closed until the independent score is fully determined.
 
 If the run is not frozen, stop and tell the user to run:
 
@@ -43,7 +44,7 @@ If the run is not frozen, stop and tell the user to run:
 /eval-freeze $ARGUMENTS
 ```
 
-If integrity verification fails, stop and mark the run invalid rather than scoring altered artifacts.
+If frozen integrity or evaluator-context verification fails, stop and mark the run invalid for scoring under the current context rather than silently using altered artifacts or criteria.
 
 ## Scoring
 
@@ -79,7 +80,8 @@ Write `<run-dir>/SCORE.md` with:
 - regressions or failure modes;
 - novel useful discoveries;
 - 1–3 concrete changes to agents/skills, only when supported by the observed failure;
-- evaluator confidence and any contamination concerns.
+- evaluator confidence and any contamination concerns;
+- the pinned framework, rubric, and reference hashes from metadata for auditability.
 
 If this replaces a prior score, say so explicitly in the new file and record material disagreements after the independent score is already fixed. Never inherit prior rationales merely because the total matches.
 
