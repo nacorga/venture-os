@@ -112,10 +112,20 @@
       }
     },
     {
-      "if": { "properties": { "latest_decision": { "properties": { "id": { "type": "string" } }, "required": ["id"] } }, "required": ["latest_decision"] },
+      "if": {
+        "properties": {
+          "latest_decision": {
+            "type": "object",
+            "properties": { "id": { "type": "string" } },
+            "required": ["id"]
+          }
+        },
+        "required": ["latest_decision"]
+      },
       "then": {
         "properties": {
           "latest_decision": {
+            "type": "object",
             "properties": {
               "outcome": { "type": "string", "enum": ["PROCEED", "TEST", "PARK"] },
               "path": { "type": "string", "minLength": 1 },
