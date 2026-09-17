@@ -103,7 +103,8 @@
     "status": { "enum": ["designed", "running", "completed", "cancelled"] },
     "created_at": {
       "anyOf": [
-        { "type": "string" },
+        { "type": "string", "format": "date-time" },
+        { "type": "string", "format": "date" },
         { "type": "null" }
       ]
     },
@@ -121,7 +122,7 @@
       "properties": {
         "locked_at": {
           "anyOf": [
-            { "type": "string", "minLength": 1 },
+            { "type": "string", "format": "date-time" },
             { "type": "null" }
           ]
         },
@@ -138,7 +139,15 @@
       "type": "object",
       "required": ["observations", "evidence_ids", "completed_at"],
       "properties": {
-        "observations": { "type": "array" },
+        "observations": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "type": "string", "minLength": 1 },
+              { "type": "object", "minProperties": 1 }
+            ]
+          }
+        },
         "evidence_ids": {
           "type": "array",
           "items": { "type": "string", "pattern": "^E[0-9]{3,}$" },
@@ -146,13 +155,40 @@
         },
         "completed_at": {
           "anyOf": [
-            { "type": "string", "minLength": 1 },
+            { "type": "string", "format": "date-time" },
+            { "type": "string", "format": "date" },
             { "type": "null" }
           ]
         }
       },
       "additionalProperties": true
+    },
+    "cancellation": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["cancelled_at", "reason"],
+          "properties": {
+            "cancelled_at": { "type": "string", "format": "date-time" },
+            "reason": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
+      ]
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "cancelled" } },
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["cancellation"],
+        "properties": { "cancellation": { "type": "object" } }
+      }
+    }
+  ],
   "additionalProperties": true
 }

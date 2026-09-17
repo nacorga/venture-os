@@ -225,6 +225,111 @@ test('linked experiment action does not duplicate preregistered signal criteria'
   assert.match(check.stderr, /must keep success_signal\/failure_signal null/);
 });
 
+test('linked execution action requires a preregistered experiment', (t) => {
+  const { ventureDir } = createFixture(t);
+  const check = runScript('check-experiment-consistency.mjs', ventureDir);
+  assert.notEqual(check.status, 0);
+  assert.match(check.stderr, /cannot reference X001 before its design is preregistered/);
+});
+
+test('experiment stage execution action must name its concrete experiment', (t) => {
+  const { ventureDir, experimentPath } = createFixture(t);
+  const lock = runScript('lock-experiment.mjs', experimentPath);
+  assert.equal(lock.status, 0, `${lock.stdout}\n${lock.stderr}`);
+  const venturePath = path.join(ventureDir, 'venture.yaml');
+  const state = YAML.parse(fs.readFileSync(venturePath, 'utf8'));
+  delete state.next_action.experiment_id;
+  fs.writeFileSync(venturePath, YAML.stringify(state));
+
+  const check = runScript('check-experiment-consistency.mjs', ventureDir);
+  assert.notEqual(check.status, 0);
+  assert.match(check.stderr, /must reference the concrete preregistered experiment/);
+});
+
+test('historical experiment action must resolve to a preserved experiment', (t) => {
+  const { ventureDir } = createFixture(t);
+  const state = baseState();
+  const snapshot = {
+    next_action: { ...structuredClone(state.next_action), experiment_id: 'X999' },
+    blocking_assumptions: [],
+    blocking_deferrals: [],
+    do_not_build: [],
+    revisit_when: [],
+    reopen_combination_rule: null,
+  };
+  fs.writeFileSync(
+    path.join(ventureDir, 'decisions', 'D001.md'),
+    `<!-- venture-state-projection:start -->\n${YAML.stringify({ decision_id: 'D001', outcome: 'PROCEED', snapshot })}<!-- venture-state-projection:end -->\n`,
+  );
+
+  const check = runScript('check-experiment-consistency.mjs', ventureDir);
+  assert.notEqual(check.status, 0);
+  assert.match(check.stderr, /snapshot next_action references missing experiment X999/);
+});
+
+test('unfinished experiment draft can be cancelled with a reason without preregistration', (t) => {
+  const experiment = baseExperiment();
+  experiment.status = 'cancelled';
+  experiment.procedure = [];
+  experiment.signals = { success: [], failure: [], ambiguous: [] };
+  experiment.cancellation = {
+    cancelled_at: '2026-09-17T10:00:00.000Z',
+    reason: 'The prerequisite data is unavailable.',
+  };
+  const { ventureDir } = createFixture(t, experiment);
+  const venturePath = path.join(ventureDir, 'venture.yaml');
+  const state = YAML.parse(fs.readFileSync(venturePath, 'utf8'));
+  state.next_action = {
+    id: 'N005',
+    type: 'decision',
+    assumption_id: null,
+    instruction: 'Choose a new bounded test.',
+    success_signal: null,
+    failure_signal: null,
+    depends_on: [],
+  };
+  fs.writeFileSync(venturePath, YAML.stringify(state));
+
+  const check = runScript('check-experiment-consistency.mjs', ventureDir);
+  assert.equal(check.status, 0, `${check.stdout}\n${check.stderr}`);
+});
+
+test('cancelled experiment must preserve timestamp and reason', (t) => {
+  const experiment = baseExperiment();
+  experiment.status = 'cancelled';
+  experiment.cancellation = null;
+  const { ventureDir } = createFixture(t, experiment);
+  const check = runScript('check-experiment-consistency.mjs', ventureDir);
+  assert.notEqual(check.status, 0);
+  assert.match(check.stderr, /cancellation/);
+});
+
+test('completed experiment requires a recorded observation', (t) => {
+  const { ventureDir, experimentPath } = createFixture(t);
+  const lock = runScript('lock-experiment.mjs', experimentPath);
+  assert.equal(lock.status, 0, `${lock.stdout}\n${lock.stderr}`);
+  const experiment = YAML.parse(fs.readFileSync(experimentPath, 'utf8'));
+  experiment.status = 'completed';
+  experiment.results.completed_at = '2026-09-17T10:00:00.000Z';
+  fs.writeFileSync(experimentPath, YAML.stringify(experiment));
+  const venturePath = path.join(ventureDir, 'venture.yaml');
+  const state = YAML.parse(fs.readFileSync(venturePath, 'utf8'));
+  state.next_action = {
+    id: 'N006',
+    type: 'decision',
+    assumption_id: null,
+    instruction: 'Record learning and decide again.',
+    success_signal: null,
+    failure_signal: null,
+    depends_on: [],
+  };
+  fs.writeFileSync(venturePath, YAML.stringify(state));
+
+  const check = runScript('check-experiment-consistency.mjs', ventureDir);
+  assert.notEqual(check.status, 0);
+  assert.match(check.stderr, /requires at least one recorded observation/);
+});
+
 test('evidence:check wrapper includes experiment consistency', (t) => {
   const experiment = baseExperiment();
   experiment.status = 'running';

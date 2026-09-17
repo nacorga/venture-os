@@ -284,3 +284,108 @@ test('post-experiment learning may schedule a neutral re-decision after a TEST s
   const result = runEvidenceCheck(ventureDir);
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 });
+
+test('historical guardrails cannot legitimize missing evidence references', (t) => {
+  const current = baseState();
+  current.latest_decision = {
+    id: 'D002',
+    outcome: 'PROCEED',
+    path: 'decisions/D002.md',
+    snapshot: {
+      next_action: structuredClone(current.next_action),
+      blocking_assumptions: [],
+      blocking_deferrals: [],
+      do_not_build: [],
+      revisit_when: [],
+      reopen_combination_rule: null,
+    },
+  };
+  const historical = structuredClone(current);
+  historical.latest_decision = {
+    id: 'D001',
+    outcome: 'PROCEED',
+    path: 'decisions/D001.md',
+    snapshot: {
+      next_action: structuredClone(current.next_action),
+      blocking_assumptions: [],
+      blocking_deferrals: [],
+      do_not_build: [{ id: 'DNB001', statement: 'Do not build yet.', evidence_ids: ['E999'] }],
+      revisit_when: [],
+      reopen_combination_rule: null,
+    },
+  };
+
+  const ventureDir = createVenture(t, current);
+  fs.writeFileSync(path.join(ventureDir, 'decisions', 'D001.md'), decisionProjection(historical));
+  fs.writeFileSync(path.join(ventureDir, 'decisions', 'D002.md'), decisionProjection(current));
+  fs.writeFileSync(path.join(ventureDir, 'research', 'current.md'), 'E999 supports the current recommendation.\n');
+
+  const result = runEvidenceCheck(ventureDir);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /DNB001 references missing evidence E999/);
+  assert.match(result.stderr, /current\.md references unknown ID E999/);
+});
+
+test('historical decision IDs must remain unique', (t) => {
+  const state = baseState();
+  state.latest_decision = {
+    id: 'D001',
+    outcome: 'PROCEED',
+    path: 'decisions/D001-a.md',
+    snapshot: {
+      next_action: structuredClone(state.next_action),
+      blocking_assumptions: [],
+      blocking_deferrals: [],
+      do_not_build: [],
+      revisit_when: [],
+      reopen_combination_rule: null,
+    },
+  };
+  const ventureDir = createVenture(t, state);
+  const projection = decisionProjection(state);
+  fs.writeFileSync(path.join(ventureDir, 'decisions', 'D001-a.md'), projection);
+  fs.writeFileSync(path.join(ventureDir, 'decisions', 'D001-b.md'), projection);
+
+  const result = runEvidenceCheck(ventureDir);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /duplicate decision ID D001/);
+});
+
+test('stable historical guardrail IDs cannot be reused with new meanings', (t) => {
+  const state = baseState();
+  state.do_not_build = [{ id: 'DNB001', statement: 'Do not build integrations.', evidence_ids: ['E001'] }];
+  state.latest_decision = {
+    id: 'D002',
+    outcome: 'PROCEED',
+    path: 'decisions/D002.md',
+    snapshot: {
+      next_action: structuredClone(state.next_action),
+      blocking_assumptions: [],
+      blocking_deferrals: [],
+      do_not_build: structuredClone(state.do_not_build),
+      revisit_when: [],
+      reopen_combination_rule: null,
+    },
+  };
+  const historical = structuredClone(state);
+  historical.latest_decision = {
+    id: 'D001',
+    outcome: 'PROCEED',
+    path: 'decisions/D001.md',
+    snapshot: {
+      next_action: structuredClone(state.next_action),
+      blocking_assumptions: [],
+      blocking_deferrals: [],
+      do_not_build: [{ id: 'DNB001', statement: 'Do not build billing.', evidence_ids: ['E001'] }],
+      revisit_when: [],
+      reopen_combination_rule: null,
+    },
+  };
+  const ventureDir = createVenture(t, state);
+  fs.writeFileSync(path.join(ventureDir, 'decisions', 'D001.md'), decisionProjection(historical));
+  fs.writeFileSync(path.join(ventureDir, 'decisions', 'D002.md'), decisionProjection(state));
+
+  const result = runEvidenceCheck(ventureDir);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /DNB001 is reused with a different statement/);
+});

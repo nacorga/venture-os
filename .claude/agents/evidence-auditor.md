@@ -36,6 +36,8 @@ Flag:
 
 Historical decisions are immutable records. Audit each decision against the snapshot embedded in that decision, not against today's mutable operational `next_action`, `do_not_build`, `revisit_when`, or reopen rule. A DNB### or T### that existed in a preserved historical snapshot remains a valid historical reference even if it has since been retired from current canonical state. Never "fix" a correct old decision merely to make it match the present.
 
+Historical snapshots define their retired DNB### and T### guardrails only. They do not make a referenced A### assumption or E### evidence record exist: those append-only entities must still resolve in canonical state. Flag malformed historical projections, duplicate decision IDs, dangling assumption/evidence references, or a historical TEST/PARK snapshot that violates its own decision-time invariants.
+
 For any evidence record with `superseded_by`, verify both directions of the correction:
 1. the original record remains preserved and points to the replacement;
 2. every assumption that still lists the old evidence ID also lists the replacement ID;

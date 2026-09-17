@@ -31,6 +31,8 @@ Before execution, run `npm run experiment:lock -- <path-to-experiment.yaml>` whi
 
 Only move the experiment to `status: running` after preregistration succeeds.
 
+If an experiment is abandoned before execution, set `status: cancelled` and record `cancellation.cancelled_at` plus a concrete `cancellation.reason`; an unexecuted draft does not need to be preregistered merely to preserve why it was cancelled. A cancelled experiment must not remain the current execution action.
+
 Set the venture stage to `experiment`. Replace current `next_action` with the next stable `N###` object whose single instruction is to execute this experiment. Set `type: experiment`, `assumption_id` to the experiment's primary assumption, and `experiment_id` to the experiment's stable `X###` ID. Keep `success_signal` and `failure_signal` null for this linked execution action: the immutable preregistered criteria live in the referenced `experiment.yaml` and must not be duplicated or paraphrased in canonical state.
 
 Run `npm run evidence:check -- $ARGUMENTS` after changing the experiment or recording results. It validates experiment schema, assumption/evidence references, linked experiment actions and preregistration integrity in addition to the venture's evidence/state invariants.
