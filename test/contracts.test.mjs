@@ -11,6 +11,7 @@ import {
   validateCaseFile,
   validateCaseObject,
 } from '../scripts/case-utils.mjs';
+import { frameworkHash, sha256File } from '../scripts/eval-provenance.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let sequence = 0;
@@ -43,12 +44,59 @@ function validCase(overrides = {}) {
 function createEvalRun(t, { complete = true } = {}) {
   const runId = uniqueId('test-eval');
   const runDir = path.join(repoRoot, 'evals', 'runs', runId);
-  fs.mkdirSync(path.join(runDir, 'venture'), { recursive: true });
+  const ventureDir = path.join(runDir, 'venture');
+  for (const child of ['research', 'decisions', 'experiments', 'learning']) {
+    fs.mkdirSync(path.join(ventureDir, child), { recursive: true });
+  }
   t.after(() => fs.rmSync(runDir, { recursive: true, force: true }));
 
-  fs.writeFileSync(path.join(runDir, 'case.yaml'), 'schema_version: 1\nid: test-case\n');
-  fs.writeFileSync(path.join(runDir, 'metadata.json'), JSON.stringify({ status: 'COMPLETE' }, null, 2) + '\n');
-  fs.writeFileSync(path.join(runDir, 'venture', 'venture.yaml'), 'version: 2\nstage: validation\n');
+  const casePath = path.join(runDir, 'case.yaml');
+  fs.writeFileSync(casePath, YAML.stringify(validCase({ id: 'test-case' })));
+
+  const venture = {
+    version: 2,
+    name: 'Test eval venture',
+    slug: 'test-eval-venture',
+    stage: 'validation',
+    thesis: {
+      problem: 'Problem',
+      icp: 'ICP',
+      solution: 'Solution',
+      business_model: 'Subscription',
+      distribution: 'Sales',
+    },
+    assumptions: [],
+    evidence_index: [],
+    latest_decision: { id: null, outcome: null, path: null, snapshot: null },
+    blocking_assumptions: [],
+    blocking_deferrals: [],
+    do_not_build: [],
+    next_action: {
+      id: 'N001',
+      type: 'normalize',
+      assumption_id: null,
+      instruction: 'Normalize the venture.',
+      success_signal: null,
+      failure_signal: null,
+      depends_on: [],
+    },
+    revisit_when: [],
+    reopen_combination_rule: null,
+  };
+  fs.writeFileSync(path.join(ventureDir, 'venture.yaml'), YAML.stringify(venture));
+
+  fs.writeFileSync(path.join(runDir, 'metadata.json'), JSON.stringify({
+    run_id: runId,
+    case: 'test-case',
+    model_label: 'test',
+    status: 'COMPLETE',
+    provenance: {
+      framework_sha256: frameworkHash(repoRoot),
+      case_sha256: sha256File(casePath),
+      rubric_sha256: sha256File(path.join(repoRoot, 'evals', 'README.md')),
+      reference_sha256: null,
+    },
+  }, null, 2) + '\n');
   if (complete) fs.writeFileSync(path.join(runDir, 'RESULT.md'), '# Result\n');
 
   return { runId, runDir };
