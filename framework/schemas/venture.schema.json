@@ -28,7 +28,7 @@
         "until": { "type": ["string", "null"] }
       },
       "additionalProperties": false
-n    },
+    },
     "doNotBuild": {
       "type": "object",
       "required": ["id", "statement"],
