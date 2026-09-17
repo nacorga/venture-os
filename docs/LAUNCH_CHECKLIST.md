@@ -11,6 +11,7 @@ This file records the public-release gate and post-launch hardening so later wor
 - [x] Public history is sanitized; the private development history is not exposed.
 - [x] Public repository was created from a fresh sanitized root history rather than by changing visibility on the private repository.
 - [x] Private benchmark suite remains stored separately.
+- [x] Generated `ventures/*` workspaces are ignored by Git by default; only `ventures/.gitkeep` is public.
 
 See `docs/PUBLICATION.md` for the ongoing repository boundary.
 
@@ -32,7 +33,7 @@ npm run venture:check -- onboarding-smoke
 - [x] Claude Code project skills are the public workflow surface.
 - [x] CI is green on the public default branch.
 
-## Deterministic repository hardening — complete in v0.1.1 code
+## Deterministic repository hardening
 
 - [x] Node.js 24 is the supported runtime and pinned through `.nvmrc`.
 - [x] `package-lock.json` is committed.
@@ -40,17 +41,19 @@ npm run venture:check -- onboarding-smoke
 - [x] Deterministic regression tests cover Case Library validation, venture creation, and eval freeze integrity.
 - [x] `repo:check` protects runtime, lockfile, CI, test, and Dependabot invariants.
 - [x] Dependabot checks npm and GitHub Actions weekly.
+- [x] Venture state is parsed as YAML and validated against schemas before semantic cross-reference checks.
+- [x] Historical decisions preserve an immutable decision-time snapshot while current operational state can advance.
+- [x] Experiments can be preregistered with an executable design lock before execution.
+- [x] Eval runs record framework/case/rubric/reference provenance and refuse scoring against silently changed evaluator criteria.
 
-## Repository governance — requires GitHub Settings
+## Repository governance — verified
 
-These settings are intentionally not encoded as application behavior and must be configured on the repository:
-
-- [ ] Protect the default branch with an active ruleset.
-- [ ] Require pull requests before merging to `main`.
-- [ ] Require the `validate` status check and require the branch to be up to date.
-- [ ] Block force pushes and branch deletion on `main`.
-- [ ] Require linear history.
-- [ ] Use squash merge as the normal merge strategy and automatically delete merged head branches.
+- [x] Protect the default branch with an active ruleset.
+- [x] Require pull requests before merging to `main`.
+- [x] Require the `validate` status check and require the branch to be up to date.
+- [x] Block force pushes and branch deletion on `main`.
+- [x] Require linear history.
+- [x] Use squash merge as the normal merge strategy and automatically delete merged head branches.
 - [ ] Configure the repository social preview image.
 - [ ] Review GitHub code-security settings: dependency graph, Dependabot alerts/security updates, secret scanning, and push protection where available.
 
@@ -68,14 +71,17 @@ These settings are intentionally not encoded as application behavior and must be
 
 - [x] Repository published from sanitized history.
 - [x] Public `v0.1.0` release created.
+- [x] Public `v0.1.1` hardening release created.
 - [x] README links and hero asset resolve from the public repository.
 - [x] CI run completed successfully on the public default branch after launch.
 - [x] Root commit author uses the GitHub `noreply` address rather than a personal email.
-- [ ] Publish `v0.1.1` after the hardening PR is merged and `main` CI is green.
+- [ ] Publish the next patch release after the state/experiment/eval integrity PR stack is merged and `main` CI is green.
 
-## External user gate — in progress
+## External user gate — pre-registered, not yet complete
 
 Invite at least 10 people who did not build Venture OS to try the Quickstart **without live guidance**.
+
+The protocol, observations, thresholds, and interpretation rules are pre-registered in `docs/M3_VALIDATION_EXPERIMENT.md`. Do not change those rules after seeing cohort outcomes; create a new experiment if the protocol itself is flawed.
 
 Track useful behavioral outcomes rather than attention metrics:
 
@@ -96,7 +102,8 @@ Do not treat stars, forks, impressions, comments, or compliments as substitutes 
 M3 is complete only when:
 
 1. the technical launch remains healthy;
-2. repository governance does not allow accidental bypass of the required validation path; and
-3. at least 10 external users have actually attempted the workflow without live guidance, with enough behavioral feedback to identify the main onboarding and decision-quality failure modes.
+2. repository governance does not allow accidental bypass of the required validation path;
+3. at least 10 external users have actually attempted the workflow without live guidance; and
+4. the cohort is interpreted against the pre-registered rules in `docs/M3_VALIDATION_EXPERIMENT.md`, ending in an explicit PROCEED / TEST / PARK decision.
 
 Until then, avoid speculative product expansion. Fix demonstrated onboarding or decision-system failures first.
