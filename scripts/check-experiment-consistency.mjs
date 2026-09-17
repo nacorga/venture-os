@@ -26,9 +26,10 @@ if (!ventureResult.valid) {
 }
 
 const ventureDir = path.dirname(statePath);
-const assumptionIds = new Set((ventureResult.value.assumptions ?? []).map((item) => item.id));
-const evidenceIds = new Set((ventureResult.value.evidence_index ?? []).map((item) => item.id));
-const experimentIds = new Set();
+const venture = ventureResult.value;
+const assumptionIds = new Set((venture.assumptions ?? []).map((item) => item.id));
+const evidenceIds = new Set((venture.evidence_index ?? []).map((item) => item.id));
+const experiments = new Map();
 let errors = 0;
 
 function fail(message) {
@@ -45,8 +46,8 @@ for (const filePath of listExperimentFiles(ventureDir)) {
   }
 
   const experiment = result.value;
-  if (experimentIds.has(experiment.id)) fail(`Duplicate experiment ID ${experiment.id}`);
-  experimentIds.add(experiment.id);
+  if (experiments.has(experiment.id)) fail(`Duplicate experiment ID ${experiment.id}`);
+  experiments.set(experiment.id, experiment);
 
   if (!assumptionIds.has(experiment.primary_assumption_id)) {
     fail(`${experiment.id} references missing assumption ${experiment.primary_assumption_id}`);
@@ -59,10 +60,30 @@ for (const filePath of listExperimentFiles(ventureDir)) {
   for (const error of experimentPreregistrationErrors(experiment)) fail(error);
 }
 
+const nextAction = venture.next_action;
+if (nextAction && typeof nextAction === 'object' && !Array.isArray(nextAction) && nextAction.experiment_id) {
+  if (!/^X[0-9]{3,}$/.test(nextAction.experiment_id)) {
+    fail(`next_action.experiment_id ${nextAction.experiment_id} is not a stable X### ID`);
+  } else if (!experiments.has(nextAction.experiment_id)) {
+    fail(`next_action references missing experiment ${nextAction.experiment_id}`);
+  } else {
+    const experiment = experiments.get(nextAction.experiment_id);
+    if (nextAction.type !== 'experiment') {
+      fail(`next_action references ${nextAction.experiment_id} but type is ${nextAction.type}, not experiment`);
+    }
+    if (nextAction.assumption_id !== experiment.primary_assumption_id) {
+      fail(`next_action assumption ${nextAction.assumption_id ?? 'null'} does not match ${nextAction.experiment_id} primary assumption ${experiment.primary_assumption_id}`);
+    }
+    if (nextAction.success_signal !== null || nextAction.failure_signal !== null) {
+      fail(`next_action linked to ${nextAction.experiment_id} must keep success_signal/failure_signal null; preregistered criteria live in experiment.yaml`);
+    }
+  }
+}
+
 if (errors) {
   console.error(`\n${errors} experiment consistency issue(s) found.`);
   process.exit(1);
 }
 
 console.log(`Experiment consistency OK: ${path.relative(root, ventureDir)}`);
-console.log(`Verified ${experimentIds.size} experiment(s).`);
+console.log(`Verified ${experiments.size} experiment(s).`);
