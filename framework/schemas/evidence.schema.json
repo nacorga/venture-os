@@ -1,5 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://venture-os.dev/schemas/evidence-v1.schema.json",
   "title": "Evidence",
   "type": "object",
   "required": ["id", "type", "statement", "direction", "strength", "assumption_ids"],
@@ -8,7 +9,7 @@
     "type": {
       "enum": ["first_party_behavioral", "first_party_qualitative", "primary_external", "secondary_external", "community_review", "other"]
     },
-    "statement": { "type": "string" },
+    "statement": { "type": "string", "minLength": 1 },
     "source": { "type": ["string", "null"] },
     "observed_at": { "type": ["string", "null"] },
     "direction": { "enum": ["supports", "contradicts", "mixed", "neutral"] },
@@ -17,7 +18,8 @@
     "transport_justification": { "type": ["string", "null"] },
     "assumption_ids": {
       "type": "array",
-      "items": { "type": "string", "pattern": "^A[0-9]{3,}$" }
+      "items": { "type": "string", "pattern": "^A[0-9]{3,}$" },
+      "uniqueItems": true
     },
     "superseded_by": { "type": ["string", "null"], "pattern": "^E[0-9]{3,}$" },
     "derivation": {
