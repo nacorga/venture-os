@@ -1,47 +1,157 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://venture-os.dev/schemas/experiment-v1.schema.json",
   "title": "Experiment",
   "type": "object",
+  "$defs": {
+    "target": {
+      "type": "object",
+      "required": ["description", "sample_goal"],
+      "properties": {
+        "description": { "type": "string", "minLength": 1 },
+        "sample_goal": {
+          "anyOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "budget": {
+      "type": "object",
+      "required": ["max_days", "max_cash", "currency"],
+      "properties": {
+        "max_days": {
+          "anyOf": [
+            { "type": "number", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "max_cash": {
+          "anyOf": [
+            { "type": "number", "minimum": 0 },
+            { "type": "null" }
+          ]
+        },
+        "currency": { "type": "string", "minLength": 3 }
+      },
+      "additionalProperties": true
+    },
+    "signals": {
+      "type": "object",
+      "required": ["success", "failure", "ambiguous"],
+      "properties": {
+        "success": { "type": "array" },
+        "failure": { "type": "array" },
+        "ambiguous": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    "decision_rules": {
+      "type": "object",
+      "required": ["on_success", "on_failure", "on_ambiguous"],
+      "properties": {
+        "on_success": { "type": "string" },
+        "on_failure": { "type": "string" },
+        "on_ambiguous": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "design": {
+      "type": "object",
+      "required": [
+        "primary_assumption_id",
+        "target",
+        "procedure",
+        "assets",
+        "budget",
+        "signals",
+        "decision_rules"
+      ],
+      "properties": {
+        "primary_assumption_id": { "type": "string", "pattern": "^A[0-9]{3,}$" },
+        "target": { "$ref": "#/$defs/target" },
+        "procedure": { "type": "array" },
+        "assets": { "type": "array" },
+        "budget": { "$ref": "#/$defs/budget" },
+        "signals": { "$ref": "#/$defs/signals" },
+        "decision_rules": { "$ref": "#/$defs/decision_rules" }
+      },
+      "additionalProperties": false
+    }
+  },
   "required": [
     "version",
     "id",
     "name",
     "status",
     "primary_assumption_id",
+    "target",
     "procedure",
+    "assets",
+    "budget",
     "signals",
-    "decision_rules"
+    "decision_rules",
+    "preregistration",
+    "results"
   ],
   "properties": {
-    "version": {
-      "const": 1
-    },
-    "id": {
-      "type": "string",
-      "pattern": "^X[0-9]{3,}$"
-    },
-    "name": {
-      "type": "string"
-    },
-    "status": {
-      "enum": [
-        "designed",
-        "running",
-        "completed",
-        "cancelled"
+    "version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^X[0-9]{3,}$" },
+    "name": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["designed", "running", "completed", "cancelled"] },
+    "created_at": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "null" }
       ]
     },
-    "primary_assumption_id": {
-      "type": "string"
+    "primary_assumption_id": { "type": "string", "pattern": "^A[0-9]{3,}$" },
+    "why_critical": { "type": "string" },
+    "target": { "$ref": "#/$defs/target" },
+    "procedure": { "type": "array" },
+    "assets": { "type": "array" },
+    "budget": { "$ref": "#/$defs/budget" },
+    "signals": { "$ref": "#/$defs/signals" },
+    "decision_rules": { "$ref": "#/$defs/decision_rules" },
+    "preregistration": {
+      "type": "object",
+      "required": ["locked_at", "design"],
+      "properties": {
+        "locked_at": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        },
+        "design": {
+          "anyOf": [
+            { "$ref": "#/$defs/design" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": false
     },
-    "procedure": {
-      "type": "array"
-    },
-    "signals": {
-      "type": "object"
-    },
-    "decision_rules": {
-      "type": "object"
+    "results": {
+      "type": "object",
+      "required": ["observations", "evidence_ids", "completed_at"],
+      "properties": {
+        "observations": { "type": "array" },
+        "evidence_ids": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^E[0-9]{3,}$" },
+          "uniqueItems": true
+        },
+        "completed_at": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": true
     }
   },
   "additionalProperties": true

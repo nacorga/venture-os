@@ -29,7 +29,9 @@ npm run venture:new -- my-venture "A B2B SaaS that helps small teams detect cost
 
 This creates a local workspace under `ventures/my-venture/`.
 
-Do not put secrets, customer data, or confidential research into a venture you intend to commit publicly.
+Generated venture workspaces are gitignored by default. This prevents `git add .` from accidentally publishing research, decisions or commercial context. If you intentionally want to publish a venture, copy or export only the material you have reviewed for publication rather than removing the default privacy boundary casually.
+
+Do not put secrets, customer data, or confidential research into material you intend to commit publicly.
 
 ## 3. Start Claude Code
 
@@ -97,7 +99,17 @@ Do not invent positioning work merely because that command exists.
 
 Stop. Read the recorded `revisit_when` conditions in canonical state. Do not keep testing until one of those conditions or genuinely new evidence justifies reopening the venture.
 
-## 6. Learn from a real experiment
+## 6. Execute without moving the goalposts
+
+Before an experiment moves from `designed` to `running`, Venture OS preregisters the decision-relevant design. The `/venture-experiment` skill does this through:
+
+```bash
+npm run experiment:lock -- ventures/my-venture/experiments/<experiment>/experiment.yaml
+```
+
+The lock snapshots the primary assumption, target, procedure, assets, budget, signals and decision rules. Those fields must not change after results begin arriving. `npm run evidence:check -- ventures/my-venture` verifies the lock together with assumption and evidence references.
+
+## 7. Learn from a real experiment
 
 After executing an experiment and collecting real first-party or behavioral evidence:
 

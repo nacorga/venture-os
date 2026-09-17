@@ -27,6 +27,12 @@ Prefer behavioral evidence over stated preference.
 
 Do not build production software if a smaller test can resolve the same uncertainty.
 
+Before execution, run `npm run experiment:lock -- <path-to-experiment.yaml>` while the experiment is still `status: designed`. This stores the decision-relevant design in `preregistration.design`. After it is locked, do not change the primary assumption, target, procedure, assets, budget, signals or decision rules. Results and status may evolve.
+
+Only move the experiment to `status: running` after preregistration succeeds.
+
 Set the venture stage to `experiment`. Replace current `next_action` with the next stable `N###` object whose single instruction is to execute this experiment. Set `type: experiment`, `assumption_id` to the experiment's primary assumption, and copy the experiment's pre-registered success/failure signals into canonical state rather than paraphrasing them.
+
+Run `npm run evidence:check -- $ARGUMENTS` after changing the experiment or recording results. It validates experiment schema, assumption/evidence references and preregistration integrity in addition to the venture's evidence/state invariants.
 
 Never rewrite `latest_decision.snapshot` when current operational state advances. The snapshot records the state that justified the prior decision.
