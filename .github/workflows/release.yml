@@ -3,17 +3,18 @@ name: Release
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Validate and publish
+  validate:
+    name: Validate release candidate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Require the default branch
         if: github.ref != 'refs/heads/main'
@@ -22,12 +23,13 @@ jobs:
           exit 1
 
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
           cache: npm
@@ -73,10 +75,17 @@ jobs:
             exit 1
           fi
 
+  publish:
+    name: Publish release
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.validate.outputs.version }}
         run: |
           gh release create "v${VERSION}" \
             --repo "$GITHUB_REPOSITORY" \
@@ -88,9 +97,9 @@ jobs:
       - name: Verify published tag
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ needs.validate.outputs.version }}
         run: |
-          TAG_SHA="$(git ls-remote origin "refs/tags/v${VERSION}" | awk '{print $1}')"
+          TAG_SHA="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v${VERSION}" --jq '.object.sha')"
           if [[ "$TAG_SHA" != "$GITHUB_SHA" ]]; then
             echo "Published tag points to ${TAG_SHA:-<missing>}; expected ${GITHUB_SHA}." >&2
             exit 1

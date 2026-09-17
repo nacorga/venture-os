@@ -70,4 +70,6 @@ Once the version commit is on `main`:
 
 The workflow reads the version from `package.json`; it does not ask for a second version value. It verifies that the lockfile agrees, rejects an existing tag or release, repeats the complete public validation gate, and publishes `v<version>` from the exact commit it validated. GitHub generates the release notes from merged pull requests.
 
-The workflow uses the repository-scoped `GITHUB_TOKEN`. It does not require an npm token, personal access token, local GitHub CLI login, or direct pushes to `main`.
+Only collaborators with repository write access can manually run the workflow. Public visitors and fork contributors cannot trigger a release in this repository.
+
+Validation runs with read-only repository permissions and without persisted Git credentials. A separate publication job receives `contents: write` only after validation succeeds. The workflow pins its third-party action code to reviewed commit SHAs and uses the repository-scoped `GITHUB_TOKEN`; it does not require an npm token, personal access token, local GitHub CLI login, or direct pushes to `main`.

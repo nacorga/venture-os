@@ -158,10 +158,14 @@ if (fs.existsSync(releaseWorkflowPath)) {
   const workflow = fs.readFileSync(releaseWorkflowPath, 'utf8');
   const requiredFragments = [
     'workflow_dispatch:',
+    'contents: read',
     'contents: write',
     'group: release',
     "github.ref != 'refs/heads/main'",
     'fetch-depth: 0',
+    'persist-credentials: false',
+    'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7',
+    'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7',
     'node-version: 24',
     'npm ci --ignore-scripts --no-audit --no-fund',
     'run: npm test',
@@ -171,6 +175,7 @@ if (fs.existsSync(releaseWorkflowPath)) {
     'npm run venture:check -- release-smoke',
     'npm run eval:new -- inventory-monitoring-saas release-smoke',
     'gh release create',
+    'needs: validate',
     '--target "$GITHUB_SHA"',
     '--generate-notes',
     '--fail-on-no-commits',
