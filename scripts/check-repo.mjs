@@ -147,6 +147,14 @@ if (fs.existsSync(nvmrcPath) && fs.readFileSync(nvmrcPath, 'utf8').trim() !== '2
 const workflowPath = path.join(root, '.github', 'workflows', 'validate.yml');
 if (fs.existsSync(workflowPath)) {
   const workflow = fs.readFileSync(workflowPath, 'utf8');
+  if (!workflow.includes('workflow_dispatch:')) fail('Validate workflow must support explicit release-branch validation');
+  if (!workflow.includes('persist-credentials: false')) fail('Validate workflow must not persist Git credentials');
+  for (const pinnedAction of [
+    'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7',
+    'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7',
+  ]) {
+    if (!workflow.includes(pinnedAction)) fail(`Validate workflow must pin reviewed action: ${pinnedAction}`);
+  }
   if (!workflow.includes('node-version: 24')) fail('Validate workflow must run on Node 24');
   if (!workflow.includes('npm ci --ignore-scripts --no-audit --no-fund')) fail('Validate workflow must install from package-lock with npm ci');
   if (!workflow.includes('run: npm test')) fail('Validate workflow must run deterministic tests');
@@ -158,8 +166,20 @@ if (fs.existsSync(releaseWorkflowPath)) {
   const workflow = fs.readFileSync(releaseWorkflowPath, 'utf8');
   const requiredFragments = [
     'workflow_dispatch:',
+    'version_type:',
+    'type: choice',
+    '- patch',
+    '- minor',
+    '- major',
+    'patch|minor|major',
+    "github.event_name == 'workflow_dispatch'",
+    "github.event_name == 'push'",
+    '- package.json',
+    '- package-lock.json',
     'contents: read',
     'contents: write',
+    'pull-requests: write',
+    'actions: write',
     'group: release',
     "github.ref != 'refs/heads/main'",
     'fetch-depth: 0',
@@ -174,8 +194,12 @@ if (fs.existsSync(releaseWorkflowPath)) {
     'npm run venture:new -- release-smoke',
     'npm run venture:check -- release-smoke',
     'npm run eval:new -- inventory-monitoring-saas release-smoke',
+    'npm version "$VERSION_TYPE" --no-git-tag-version --ignore-scripts',
+    'BRANCH="release/v${VERSION}"',
+    'gh pr create',
+    'gh workflow run validate.yml',
     'gh release create',
-    'needs: validate',
+    'needs: validate_release',
     '--target "$GITHUB_SHA"',
     '--generate-notes',
     '--fail-on-no-commits',
@@ -183,7 +207,7 @@ if (fs.existsSync(releaseWorkflowPath)) {
   for (const fragment of requiredFragments) {
     if (!workflow.includes(fragment)) fail(`Release workflow missing required control: ${fragment}`);
   }
-  for (const forbiddenFragment of ['npm publish', 'packages: write', 'id-token: write', 'skip_tests']) {
+  for (const forbiddenFragment of ['npm publish', 'packages: write', 'id-token: write', 'skip_tests', 'git push origin main']) {
     if (workflow.includes(forbiddenFragment)) fail(`Release workflow must not contain: ${forbiddenFragment}`);
   }
 }
