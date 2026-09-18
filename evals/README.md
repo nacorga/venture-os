@@ -33,7 +33,7 @@ The active agent must never read `evals/reference/`, previous runs, evaluator bu
 
 When the decision's next action is an experiment, freeze also requires that experiment to be designed and locked with success and failure rules that name the gate outcome they lead to — otherwise a later result could not be checked against it.
 
-Only after those checks pass does freeze create `evaluator/` and copy the evaluator-only inputs into the run. The frozen digest includes that evaluator bundle. `scores/` — and a legacy root `SCORE.md` — remains outside the digest, so any number of independent judges can score a run without mutating it. Freeze refuses a run that already has scores.
+Only after those checks pass does freeze create `evaluator/` and copy the evaluator-only inputs into the run. The frozen digest includes that evaluator bundle. `scores/` — and a legacy root `SCORE.md` — remains outside the digest, so any number of independent judges can score a run without mutating it. Freeze refuses a run that already has scores or an evaluator bundle, and any symbolic link: a frozen run holds regular files only.
 
 This separates three questions that should not be conflated:
 

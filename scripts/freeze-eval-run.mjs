@@ -157,11 +157,17 @@ if (integrity.status !== 0) {
   process.exit(1);
 }
 
-for (const reserved of ['evaluator', 'scores']) {
+for (const reserved of ['evaluator', 'scores', 'SCORE.md']) {
   if (fs.existsSync(path.join(runDir, reserved))) {
-    console.error(`Cannot freeze run: ${reserved}/ already exists before freeze. This violates eval isolation.`);
+    console.error(`Cannot freeze run: ${reserved} already exists before freeze. Evaluator inputs and scores are written only after freeze; this violates eval isolation.`);
     process.exit(1);
   }
+}
+
+const irregular = runDigest(runDir).irregular;
+if (irregular.length) {
+  console.error(`Cannot freeze run: a frozen run holds regular files only. Replace these with the files they point at: ${irregular.join(', ')}`);
+  process.exit(1);
 }
 
 const frozenAt = new Date().toISOString();
