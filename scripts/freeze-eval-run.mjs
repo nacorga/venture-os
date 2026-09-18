@@ -15,7 +15,7 @@ import {
   sha256File,
 } from './eval-provenance.mjs';
 import { findLockedExperimentsFor, structuredRoutingErrors } from './experiment-utils.mjs';
-import { forkIntegrityErrors } from './reveal-utils.mjs';
+import { forkIntegrityErrors, looksForked, readForkKey } from './reveal-utils.mjs';
 import { validateVentureFile } from './venture-utils.mjs';
 
 let args;
@@ -112,7 +112,16 @@ if (currentRuntime.framework_sha256 !== metadata.provenance.framework_sha256) {
   process.exit(1);
 }
 
-const pairId = metadata.reveal?.pair_id ?? null;
+// A fork is recognised from its sealed key, never from metadata.json, which the
+// run under test can edit. A run that carries a fork's files without a key is
+// refused rather than frozen as a first phase.
+const runsDir = path.join(root, 'evals', 'runs');
+const forkKey = readForkKey(runsDir, runId);
+if (!forkKey && looksForked(runDir)) {
+  console.error('Cannot freeze run: it carries a revealed packet or a phase-1 result but has no fork key in evals/runs/.keys/.');
+  process.exit(1);
+}
+const pairId = forkKey?.reveal.pair_id ?? null;
 const currentEvaluatorHashes = evaluatorSourceHashes(root, metadata.case, suite.referenceDir, pairId);
 const createdEvaluatorHashes = metadata.provenance.evaluator_sources ?? {};
 for (const key of Object.keys(evaluatorBundle)) {
@@ -160,8 +169,8 @@ if (integrity.status !== 0) {
   process.exit(1);
 }
 
-if (metadata.parent) {
-  const forkErrors = forkIntegrityErrors(runDir, metadata, ventureResult.value);
+if (forkKey) {
+  const forkErrors = forkIntegrityErrors({ runsDir, runDir, key: forkKey, venture: ventureResult.value, referenceDir: suite.referenceDir });
   if (forkErrors.length) {
     for (const error of forkErrors) console.error(`Cannot freeze fork: ${error}`);
     process.exit(1);

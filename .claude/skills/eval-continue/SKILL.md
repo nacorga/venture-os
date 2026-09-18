@@ -15,22 +15,22 @@ If no run ID was provided, stop and show:
 /eval-continue <run-id>
 ```
 
-Set `<run-dir>` to `evals/runs/$ARGUMENTS`. It is a fork: `<run-dir>/metadata.json` has a `parent`, and `<run-dir>/reveal/packet.yaml` holds evidence the first phase never saw. If either is missing, stop: this skill continues forks only.
+Set `<run-dir>` to `evals/runs/$ARGUMENTS`. It is a fork: `<run-dir>/RESULT.phase1.md` is its first phase, and `<run-dir>/reveal/packet.yaml` holds evidence that phase never saw. If either is missing, stop: this skill continues forks only.
 
 ## Isolation rule
 
-Everything in `eval-run` § Isolation rule applies. In addition, never open another fork of the same parent — any `evals/runs/<parent-run-id>--*` other than this one — nor the parent run's directory. This run's own `venture/` and `RESULT.phase1.md` are its complete history.
+Everything in `eval-run` § Isolation rule applies. In addition, never open another run under `evals/runs/` — the run this one was forked from, or any other fork of it — and never open `evals/runs/.keys/`. This run's own `venture/` and `RESULT.phase1.md` are its complete history.
 
 ## How to read the packet
 
-The packet describes what happened after the first decision. **Treat its statements as true for this run**: it is a controlled scenario, so do not try to verify it on the web and do not dismiss it as hypothetical. Its *weight* is yours to judge, exactly as for any other evidence under `framework/evidence-standard.md`: what class of evidence each item is, which segment it speaks for, whether a figure in it is derived and how, and whether two items rest on the same source. A packet item can be true and still be weak evidence for an assumption.
+The packet describes what happened after the first decision. **Treat its statements as true for this run**: it is a controlled scenario, so do not try to verify it on the web and do not dismiss it as hypothetical. Its weight is yours to judge under `framework/evidence-standard.md`, exactly as for any other evidence: a true statement can still be weak evidence for an assumption.
 
 ## Workflow
 
 1. Read `<run-dir>/case.yaml`, `<run-dir>/reveal/packet.yaml`, the venture state in `<run-dir>/venture/`, its latest decision file, and `<run-dir>/RESULT.phase1.md`.
 2. Record the packet as evidence in `venture.yaml`: one or more new `E###` records per item, each with `source: "reveal/packet.yaml#PK-n"` naming the item exactly, type, strength, segment and direction per the evidence standard, linked reciprocally to the assumptions it bears on. **Every item must be cited by at least one record** — an item you judge irrelevant still gets a record, with direction `neutral` and the reason in its statement. Freeze refuses an uncited item.
 3. When the packet's `kind` is `prereg`, it reports the results of the experiment it names:
-   - record them in that experiment: each item's text as an entry in `results.observations`, the new evidence IDs in `results.evidence_ids`, `results.completed_at`, and `status: completed`;
+   - record them in the experiment whose `id` is the packet's `experiment_id`: each item's text as an entry in `results.observations`, the new evidence IDs in `results.evidence_ids`, `results.completed_at`, and `status: completed`;
    - apply `venture-learn` to the venture. It classifies `results.branch` against the locked signals and replaces `next_action`;
    - run `npm run evidence:check -- <run-dir>/venture` only after `venture-learn` has replaced `next_action` — until then the checker correctly refuses a current action that executes a completed experiment.
 4. When the packet's `kind` is `planted`, it is new evidence rather than the result of an experiment this venture ran. Update assumption statuses from it as research would, and record in a learning note what it changed. Leave any existing experiment as it is.
@@ -38,7 +38,7 @@ The packet describes what happened after the first decision. **Treat its stateme
 6. If the new decision's `next_action` is an experiment, apply `venture-experiment` for it and run `npm run experiment:lock -- <path-to-experiment.yaml>`, leaving it `designed` — as in `eval-run`.
 7. Write `<run-dir>/RESULT.md` as a projection of the new decision, in the shape `eval-run` step 8 and 9 define, plus a section **What the reveal changed**: which assumptions moved, which evidence moved them, and why the outcome is or is not the one the first phase would have predicted.
 8. Run `npm run evidence:check -- <run-dir>/venture`.
-9. Never modify `RESULT.phase1.md`, `reveal/packet.yaml`, a decision file that existed before this session, or an experiment's `preregistration`. Freeze checks all four against the fork.
+9. Change nothing the first phase wrote except by adding to it. `RESULT.phase1.md`, `reveal/packet.yaml` and every file that existed before this session stay as they are, with two exceptions: `venture.yaml`, where earlier evidence records may only gain links or a `superseded_by` and earlier assumptions keep what they assert, and the experiment the packet reports on, which gains results and a status but keeps its `preregistration`. Freeze checks all of it against the run this one was forked from.
 
 Do not score the run and do not read evaluator references.
 
