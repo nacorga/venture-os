@@ -76,6 +76,8 @@ Use a `derivation` object on the evidence record when practical.
 
 A derived quantitative record must not be `strong` merely because its inputs are well sourced. Cap it at `medium` until an independent re-derivation, authoritative implementation, or equivalent second check confirms both the arithmetic **and the model's applicability to the problem**.
 
+`npm run evidence:check` enforces the cap: a record with a `derivation` and `strength: strong` fails unless `derivation.independently_verified` is `true` and `derivation.verification_note` says what the second check was. A superseded record is exempt, so supersession remains the repair.
+
 If a derived record materially changes a gate decision, critical assumption, or kill condition, actively attempt a second derivation before relying on it.
 
 ## Superseded and corrected evidence
