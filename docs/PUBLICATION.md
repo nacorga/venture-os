@@ -65,7 +65,7 @@ Repository changes, including version changes, must reach `main` through a pull 
 1. open **Actions → Prepare release** in GitHub;
 2. select **Run workflow**, keep the branch set to `main`, and choose the version increment;
 3. wait for the workflow to validate the repository and open the linked version pull request;
-4. follow the run summary link, review the version change, and merge the pull request after its required validation succeeds;
+4. follow the run summary link, review the version change, approve the pull request's `validate` run if GitHub holds it (**Approve and run workflows**), and merge the pull request after that check succeeds;
 5. follow **Publish release**, triggered automatically by the merge, to the published GitHub release. No second manual workflow run is needed.
 
 The choices follow Semantic Versioning:
@@ -78,13 +78,13 @@ The choices follow Semantic Versioning:
 
 **Prepare release** calculates the version with npm, updates `package.json` and `package-lock.json` together, and opens `release/v<version>`. It never pushes directly to `main`. The run summary and pull-request description both state that merging is the remaining publication step.
 
-Version pull requests change only package metadata. Their required `validate` check is started explicitly by **Prepare release**, so GitHub does not also create a duplicate pull-request run that waits for maintainer approval of `github-actions[bot]` in this public repository.
+Version pull requests change only package metadata, and they run the same required `validate` check as any other pull request. Because `github-actions[bot]` opens them in a public repository, GitHub may hold that run until a maintainer approves it. A run dispatched on the version branch instead would pass without satisfying the pull request's required check: GitHub counts only a run of the `pull_request` event there.
 
 After merge, **Publish release** verifies that the version is publishable, repeats the complete public validation gate, and publishes `v<version>` from the exact merge commit it validated. GitHub generates the release notes from merged pull requests.
 
 ### One-time repository setting
 
-GitHub Actions must be allowed to create the version pull request. A repository administrator should enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests** once. **Prepare release** creates pull requests but does not approve or merge them; branch protection and the explicitly started `validate` check still apply.
+GitHub Actions must be allowed to create the version pull request. A repository administrator should enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests** once. **Prepare release** creates pull requests but does not approve or merge them; branch protection and the pull request's required `validate` check still apply.
 
 Only collaborators with repository write access can manually run **Prepare release**. Public visitors and fork contributors cannot trigger a release in this repository.
 
