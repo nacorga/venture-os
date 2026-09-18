@@ -389,3 +389,63 @@ test('stable historical guardrail IDs cannot be reused with new meanings', (t) =
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /DNB001 is reused with a different statement/);
 });
+
+function derivedStrongState(derivation, extra = {}) {
+  const state = baseState();
+  state.evidence_index[0] = {
+    ...state.evidence_index[0],
+    type: 'secondary_external',
+    strength: 'strong',
+    derivation: {
+      model: 'One-sample proportion test against a known baseline',
+      formula_or_method: 'n = (z_a*sqrt(p0(1-p0)) + z_b*sqrt(p1(1-p1)))^2 / (p1-p0)^2',
+      applicability_conditions: 'Baseline estimated from a long stable history',
+      ...derivation,
+    },
+    ...extra,
+  };
+  return state;
+}
+
+test('derived evidence cannot be strong without a recorded second check', (t) => {
+  const ventureDir = createVenture(t, derivedStrongState({ independently_verified: false, verification_note: null }));
+  const result = runEvidenceCheck(ventureDir);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /E001 is derived and strong without a recorded second check/);
+});
+
+test('derived strong evidence needs a verification note, not only the flag', (t) => {
+  const ventureDir = createVenture(t, derivedStrongState({ independently_verified: true, verification_note: '  ' }));
+  const result = runEvidenceCheck(ventureDir);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /E001 is derived and strong without a recorded second check/);
+});
+
+test('derived evidence may be strong once independently re-derived', (t) => {
+  const ventureDir = createVenture(t, derivedStrongState({
+    independently_verified: true,
+    verification_note: 'Recomputed with a second method; model applicability confirmed.',
+  }));
+  const result = runEvidenceCheck(ventureDir);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('a superseded derived record keeps its historical strength', (t) => {
+  const state = derivedStrongState({ independently_verified: false, verification_note: null }, { superseded_by: 'E002' });
+  state.assumptions[0].evidence_ids = ['E001', 'E002'];
+  state.evidence_index.push({
+    id: 'E002',
+    type: 'secondary_external',
+    statement: 'Corrected derivation',
+    source: null,
+    observed_at: '2026-09-17',
+    direction: 'supports',
+    strength: 'medium',
+    segment: 'primary-icp',
+    transport_justification: null,
+    assumption_ids: ['A001'],
+  });
+  const ventureDir = createVenture(t, state);
+  const result = runEvidenceCheck(ventureDir);
+  assert.equal(result.status, 0, result.stderr);
+});
