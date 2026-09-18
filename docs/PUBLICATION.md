@@ -60,28 +60,32 @@ The historical sanitization step was a one-time requirement for the first public
 
 ## Routine release workflow
 
-Repository changes, including version changes, must reach `main` through a pull request. The Release workflow prepares that pull request and publishes only after it is merged:
+Repository changes, including version changes, must reach `main` through a pull request. Preparation and publication are shown as separate Actions so the current state and required next step remain explicit:
 
-1. open **Actions → Release** in GitHub;
+1. open **Actions → Prepare release** in GitHub;
 2. select **Run workflow**, keep the branch set to `main`, and choose the version increment;
 3. wait for the workflow to validate the repository and open the linked version pull request;
-4. review and merge that pull request after its required validation succeeds;
-5. follow the Release workflow triggered by the merge to the published GitHub release.
+4. follow the run summary link, review the version change, and merge the pull request after its required validation succeeds;
+5. follow **Publish release**, triggered automatically by the merge, to the published GitHub release. No second manual workflow run is needed.
 
 The choices follow Semantic Versioning:
 
-| Choice | Example from `0.2.1` | Use when |
+| Choice | Example from `0.2.2` | Use when |
 | --- | --- | --- |
-| `patch` | `0.2.2` | fixing behavior without changing the public contract |
+| `patch` | `0.2.3` | fixing behavior without changing the public contract |
 | `minor` | `0.3.0` | adding backwards-compatible capabilities |
 | `major` | `1.0.0` | making incompatible changes to the public contract |
 
-The preparation run calculates the version with npm, updates `package.json` and `package-lock.json` together, and opens `release/v<version>`. It never pushes directly to `main`. The merge run verifies that the version is publishable, repeats the complete public validation gate, and publishes `v<version>` from the exact merge commit it validated. GitHub generates the release notes from merged pull requests.
+**Prepare release** calculates the version with npm, updates `package.json` and `package-lock.json` together, and opens `release/v<version>`. It never pushes directly to `main`. The run summary and pull-request description both state that merging is the remaining publication step.
+
+Version pull requests change only package metadata. Their required `validate` check is started explicitly by **Prepare release**, so GitHub does not also create a duplicate pull-request run that waits for maintainer approval of `github-actions[bot]` in this public repository.
+
+After merge, **Publish release** verifies that the version is publishable, repeats the complete public validation gate, and publishes `v<version>` from the exact merge commit it validated. GitHub generates the release notes from merged pull requests.
 
 ### One-time repository setting
 
-GitHub Actions must be allowed to create the version pull request. A repository administrator should enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests** once. The workflow creates pull requests but does not approve or merge them; branch protection and the required `validate` check still apply.
+GitHub Actions must be allowed to create the version pull request. A repository administrator should enable **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests** once. **Prepare release** creates pull requests but does not approve or merge them; branch protection and the explicitly started `validate` check still apply.
 
-Only collaborators with repository write access can manually run the workflow. Public visitors and fork contributors cannot trigger a release in this repository.
+Only collaborators with repository write access can manually run **Prepare release**. Public visitors and fork contributors cannot trigger a release in this repository.
 
 Validation runs with read-only repository permissions and without persisted Git credentials. Separate jobs receive only the permissions needed to create the version branch and pull request or publish the final release. The workflow pins third-party action code to reviewed commit SHAs and uses the repository-scoped `GITHUB_TOKEN`; it does not require an npm token, personal access token, or local GitHub CLI login.
