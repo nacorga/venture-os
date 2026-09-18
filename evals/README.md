@@ -73,7 +73,7 @@ Freeze performs semantic validation before creating the immutable marker and eva
 /eval-score <run-id> <judge-label>
 ```
 
-Each judge writes `scores/<judge-label>.md` and does not read another judge's score until its own is drafted. Two judges on the same run are what make a disagreement visible; one judge's total is not evidence of anything. Scoring reads only the frozen evaluator bundle for that run. It must not silently substitute the repository's current reference or current rubric.
+Each judge writes `scores/<judge-label>.md`, ending in the machine-readable block the frozen rubric defines, and does not read another judge's score until its own is drafted. Two judges on the same run are what make a disagreement visible; one judge's total is not evidence of anything. Scoring reads only the frozen evaluator bundle for that run. It must not silently substitute the repository's current reference or current rubric.
 
 ### Low-level primitives
 
@@ -83,14 +83,25 @@ npm run evidence:check -- evals/runs/<run-id>/venture
 npm run eval:freeze -- <run-id> [--suite <path>]
 npm run eval:verify -- <run-id>
 npm run eval:fork -- <run-id> --arm <arm> [--rep <n>] [--suite <path>] [--model-label <label>] [--cross-framework]
-npm run eval:verdict -- <run-id>
+npm run eval:verdict -- <run-id> [--facts-only]
+npm run eval:compare -- <run-a> <run-b>
+npm run eval:compare -- --unblind <compare-id>
+npm run eval:summary -- [--runs <dir>] [--compare <dir>] [--case <id>]
 ```
 
 These are implementation primitives, not a second human workflow to memorize.
 
 ## What is scored
 
-The behavior rubric — the ten behaviors and their 0–2 scale — lives in [`RUBRIC.md`](RUBRIC.md). It is an evaluator source: hashed at `eval:new`, copied into the run's `evaluator/` bundle at freeze, and read by judges only from that frozen copy.
+The behavior rubric lives in [`RUBRIC.md`](RUBRIC.md). It is an evaluator source: hashed at `eval:new`, copied into the run's `evaluator/` bundle at freeze, and read by judges only from that frozen copy.
+
+It judges eight behaviors 0–2 and leaves two to scripts: whether the decision is auditable, which freeze enforces, and whether contradictory evidence changes the analysis, which staged reveals measure directly. Its total is a **floor alarm**. Four runs of an earlier rubric scored 20, 19, 19 and 19 out of 20: a strong run lands at the top, and the gap between two strong runs is smaller than the gap between two judges. What discriminates is:
+
+1. **mechanical verdicts** on forked runs — did the second decision follow the run's own preregistration, keep a planted pair in order, stay out of a trap (§ Staged evidence reveal);
+2. **blind pairwise comparison** — a judge prefers one of two anonymised runs of the same case per behavior, and only then learns which was which (§ Comparing two versions);
+3. **the spread between judges** — two judges per run make a score's noise visible; an item where they differ by more than one point is not evidence of anything until it is resolved.
+
+A judge reads `scores/facts.json` (`npm run eval:verdict -- <run-id> --facts-only`) instead of recounting the evidence index by hand, and never reads a mechanical verdict before its own score is fixed.
 
 ## Public benchmark suite
 
@@ -136,6 +147,28 @@ A pair verdict only pairs forks of the same parent, the same version of the pair
 
 A tied pair does not fail; it says the pair did not discriminate. An inverted pair fails. `--cross-framework` forks a run frozen on one framework into a second phase on another, which is the lowest-noise way to test a change to how Venture OS decides: both versions start from the same phase-1 state. Pair verdicts never mix frameworks.
 
+### Comparing two versions
+
+```bash
+npm run eval:compare -- <run-a> <run-b>
+```
+
+builds `evals/compare/<compare-id>/` (gitignored): both runs' artifacts under the neutral names `X/` and `Y/`, the case, and a comparison rubric of its own, so runs frozen under different rubrics compare on one standard. Which run is which is sealed in `evals/compare/.keys/`, with a commitment in the comparison's manifest so the key cannot be edited afterwards unnoticed. Each judge, in a fresh session:
+
+```text
+/eval-compare <compare-id> <judge-label>
+```
+
+prefers X, Y or a tie per behavior, quoting both runs. Unblinding happens outside judge sessions and maps each preference back to its run:
+
+```bash
+npm run eval:compare -- --unblind <compare-id>
+```
+
+Comparing two runs of the same framework (an A/A comparison) is how the noise of the comparison itself is measured: preferences that split one way across A/A pairs as often as across A/B pairs are noise.
+
+`npm run eval:summary` reads everything above across frozen runs — judged items with their spread, mechanical verdicts, pair verdicts, unblinded comparisons and fact-sheet alarms — and prints one report. `--runs` and `--compare` point it at an archive, such as a private suite's.
+
 ## Private benchmark boundary
 
 Do not commit real venture names, customer information, proprietary research, private outcomes, or evaluator references derived from sensitive projects here. Keep those benchmarks outside this repository and run them against a pinned Venture OS commit or recorded effective runtime hash.
@@ -152,13 +185,11 @@ See `docs/PUBLICATION.md`.
 
 ## Regression protocol
 
-When changing a skill or agent:
+Every change to a skill, agent, gate, evidence rule, schema or scoring contract names the run and the failure that motivated it, and ships with evidence that it fixed that failure without breaking anything else:
 
-1. create a run with `/eval-new` so effective runtime and evaluator-source provenance are recorded;
-2. execute each benchmark in a fresh session with `/eval-run`;
-3. freeze each run with `/eval-freeze`;
-4. score each run in a fresh session per judge with `/eval-score <run-id> <judge-label>`, using only the frozen evaluator bundle;
-5. compare against previous frozen runs;
-6. keep changes that improve general behavior rather than one case only.
+1. **Baseline.** On the commit before the change, the affected cases have frozen runs, two judges on each first-phase run, and preregistration forks on each `TEST`. Existing frozen runs serve when their framework is the one being changed.
+2. **The originating case.** On the changed framework, re-run the case the failure came from. The failure must be gone, shown by a mechanical verdict where one covers it and by the judges' failure-mode sections where none does.
+3. **No regression elsewhere.** For behaviors that decide — how research, challenge, decision and learning behave — fork the baseline's frozen parents with `--cross-framework` and compare the second phases' verdicts. For everything else, run at least one other case on the changed framework and compare it blind against its baseline with `/eval-compare`. A change that loses more blind comparisons than it wins does not merge.
+4. **Record it.** The pull request states the originating run, the verdicts and comparisons before and after, and `npm run eval:summary` output for the cases involved.
 
-Do not optimize prompts for the literal wording of reference files. Encoding the expected answer is a methodology regression even if the score improves.
+Do not optimize prompts for the literal wording of reference files or reveal pairs. Encoding the expected answer is a methodology regression even if every verdict passes.

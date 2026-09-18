@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { hashPathSet, verifyFrozenRun } from './eval-provenance.mjs';
-import { decisionRuleOutcome } from './experiment-utils.mjs';
+import { decisionRuleOutcome, findLockedExperimentsFor, listExperimentFiles } from './experiment-utils.mjs';
 import { evidenceCiting, gateRank, readForkKey } from './reveal-utils.mjs';
 import { parseYamlFile } from './venture-utils.mjs';
 
@@ -19,9 +19,11 @@ const toolFiles = [
 ];
 const strengthRank = { unknown: 0, weak: 1, medium: 2, strong: 3 };
 
-const [runId] = process.argv.slice(2);
+const cliArgs = process.argv.slice(2);
+const factsOnly = cliArgs.includes('--facts-only');
+const [runId] = cliArgs.filter((arg) => arg !== '--facts-only');
 if (!runId || runId.includes('/') || runId.includes('..')) {
-  console.error('Usage: npm run eval:verdict -- <run-id>');
+  console.error('Usage: npm run eval:verdict -- <run-id> [--facts-only]');
   process.exit(1);
 }
 
@@ -47,6 +49,100 @@ function frozenOrStop(dir, id) {
 function writeScore(dir, file, value) {
   fs.mkdirSync(path.join(dir, 'scores'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'scores', file), JSON.stringify(value, null, 2) + '\n');
+}
+
+const marketSizeVocabulary = /\b(TAM|SAM|SOM|CAGR|market size|market growth|billion|search volume)\b/i;
+
+function proseFiles(dir) {
+  const files = [];
+  for (const sub of ['research', 'decisions', 'learning']) {
+    const subDir = path.join(dir, 'venture', sub);
+    if (!fs.existsSync(subDir)) continue;
+    for (const name of fs.readdirSync(subDir).filter((entry) => entry.endsWith('.md')).sort()) files.push(`venture/${sub}/${name}`);
+  }
+  if (fs.existsSync(path.join(dir, 'RESULT.md'))) files.push('RESULT.md');
+  return files;
+}
+
+function countBy(items, key) {
+  const counts = {};
+  for (const item of items) counts[item[key] ?? 'unset'] = (counts[item[key] ?? 'unset'] ?? 0) + 1;
+  return counts;
+}
+
+// Counts a judge would otherwise re-derive by hand, from frozen state only. It
+// carries no verdict, so a judge can read it without learning whether the run
+// passed its mechanical checks.
+function collectFacts(dir) {
+  const venture = parseYamlFile(path.join(dir, 'venture', 'venture.yaml'), 'venture.yaml').value;
+  const evidence = venture.evidence_index ?? [];
+  const assumptions = venture.assumptions ?? [];
+
+  const evidenceMatrix = {};
+  for (const record of evidence) {
+    const byDirection = (evidenceMatrix[record.type] ??= {});
+    const byStrength = (byDirection[record.direction] ??= {});
+    byStrength[record.strength] = (byStrength[record.strength] ?? 0) + 1;
+  }
+  const firstParty = evidence.filter((record) => String(record.type).startsWith('first_party'));
+  const unsourcedFirstParty = firstParty.filter((record) => !/reveal\/packet\.yaml#PK-[0-9]+/.test(String(record.source ?? '')));
+
+  const decided = venture.latest_decision?.snapshot?.next_action ?? null;
+  let experiment = null;
+  if (decided?.type === 'experiment') {
+    const locked = findLockedExperimentsFor(path.join(dir, 'venture'), decided.assumption_id)[0]?.experiment ?? null;
+    experiment = locked
+      ? {
+        id: locked.id,
+        assumption_id: locked.primary_assumption_id,
+        sample_goal: locked.target?.sample_goal ?? null,
+        budget: locked.budget,
+        routed_outcomes: Object.fromEntries(['on_success', 'on_failure', 'on_ambiguous'].map((rule) => [rule, decisionRuleOutcome(locked.decision_rules?.[rule])])),
+      }
+      : { missing: true };
+  }
+
+  const marketSize = [];
+  for (const relative of proseFiles(dir)) {
+    fs.readFileSync(path.join(dir, relative), 'utf8').split('\n').forEach((line, index) => {
+      if (marketSizeVocabulary.test(line)) marketSize.push({ file: relative, line: index + 1, text: line.trim().slice(0, 240) });
+    });
+  }
+
+  const alarms = [];
+  if (unsourcedFirstParty.length) {
+    alarms.push(`${unsourcedFirstParty.length} first-party evidence record(s) with no first-party source in this run: ${unsourcedFirstParty.map((record) => record.id).join(', ')}`);
+  }
+
+  return {
+    decision: {
+      id: venture.latest_decision?.id ?? null,
+      outcome: venture.latest_decision?.outcome ?? null,
+      next_action_type: decided?.type ?? null,
+      blocking_assumptions: venture.latest_decision?.snapshot?.blocking_assumptions ?? [],
+      do_not_build: (venture.latest_decision?.snapshot?.do_not_build ?? []).length,
+      revisit_when: (venture.latest_decision?.snapshot?.revisit_when ?? []).length,
+    },
+    assumptions: {
+      total: assumptions.length,
+      by_status: countBy(assumptions, 'status'),
+      by_criticality: countBy(assumptions, 'criticality'),
+      critical: assumptions.filter((item) => item.criticality === 'critical').map((item) => ({ id: item.id, status: item.status, evidence: (item.evidence_ids ?? []).length })),
+    },
+    evidence: {
+      total: evidence.length,
+      by_type_direction_strength: evidenceMatrix,
+      first_party: firstParty.length,
+      derived: evidence.filter((record) => record.derivation).length,
+      derived_strong: evidence.filter((record) => record.derivation && record.strength === 'strong').length,
+      superseded: evidence.filter((record) => record.superseded_by).length,
+      without_source: evidence.filter((record) => record.source === null || record.source === undefined || record.source === '').length,
+    },
+    experiments: listExperimentFiles(path.join(dir, 'venture')).length,
+    decided_experiment: experiment,
+    market_size_vocabulary: marketSize,
+    alarms,
+  };
 }
 
 function childVerdict(dir, runId, key) {
@@ -165,7 +261,10 @@ if (!fs.existsSync(runDir)) {
 const marker = frozenOrStop(runDir, runId);
 const forkKey = readForkKey(runsDir, runId);
 
-if (forkKey) {
+writeScore(runDir, 'facts.json', { tool, frozen_sha256: marker.sha256, run_id: runId, ...collectFacts(runDir) });
+if (factsOnly) {
+  console.log(`${runId}: scores/facts.json written.`);
+} else if (forkKey) {
   const verdict = { tool, frozen_sha256: marker.sha256, ...childVerdict(runDir, runId, forkKey) };
   writeScore(runDir, 'mechanical.json', verdict);
   for (const item of verdict.checks) console.log(`${item.pass ? 'PASS' : 'FAIL'} ${item.check}${item.item ? ` ${item.item}` : ''}`);
