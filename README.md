@@ -121,7 +121,7 @@ Public benchmark inputs come from the Case Library. Maintainer-owned evaluator e
 /eval-new inventory-monitoring-saas claude-opus-5
 ```
 
-The eval workflow preserves fresh-session boundaries through run, freeze, and score. Real or sensitive benchmarks belong outside this repository and should be executed against a pinned public commit.
+The eval workflow preserves fresh-session boundaries through run, freeze, and score, and each run can be scored by several independent judges. Real or sensitive benchmarks belong outside this repository, are passed in with `--suite <path>`, and should be executed against a pinned public commit.
 
 See [`evals/README.md`](evals/README.md) and [`docs/PUBLICATION.md`](docs/PUBLICATION.md).
 
@@ -147,6 +147,7 @@ Start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - `templates/` — canonical output structures.
 - `ventures/` — local venture workspaces; do not commit sensitive venture data.
 - `cases/` — public, portable Case Library inputs.
+- `evals/RUBRIC.md` — the behavior rubric judges score frozen runs against.
 - `evals/reference/` — evaluator-only expectations for the scored public regression subset.
 - `evals/runs/` — generated benchmark executions.
 - `scripts/` — deterministic mechanics; business judgment remains with agents and humans.

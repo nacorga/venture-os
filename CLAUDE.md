@@ -129,7 +129,7 @@ When running a benchmark under `evals/runs/`, the goal is to measure discovery a
 During an active eval run:
 
 - treat that run's `case.yaml` as the only venture seed;
-- do not read `evals/reference/`;
+- do not read `evals/reference/`, nor the evaluator references of an external suite;
 - do not inspect git history, previous eval outputs, or other artifacts to infer reference expectations;
 - do not read other cases for hints about desired conclusions;
 - external research is allowed and encouraged when the workflow calls for it;
@@ -139,7 +139,7 @@ Reference material may be read only after the run contains a valid `FROZEN.json`
 
 A scored run must never modify its frozen venture artifacts or result. Evaluation writes only scoring artifacts.
 
-When independently re-scoring a run that already contains `SCORE.md`, do not read the prior score until the new score has been derived from frozen artifacts and the evaluator reference. Prior scores are comparison material, not scoring input.
+Each judge writes its own `scores/<judge-label>.md` in its own fresh session. Do not read another judge's score — nor a legacy root `SCORE.md` — until your own has been derived from frozen artifacts and the evaluator reference. Other scores are comparison material, not scoring input.
 
 ## Output quality
 

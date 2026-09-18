@@ -1,21 +1,25 @@
 ---
 name: eval-freeze
 description: Validate, freeze, and verify one completed Venture OS eval run. Use manually after /eval-run and before /eval-score.
-argument-hint: <run-id>
+argument-hint: <run-id> [--suite <path>]
 disable-model-invocation: true
 ---
 
 # Eval Freeze
 
-Run ID: `$ARGUMENTS`
+Run ID: `$0`
+
+Arguments: `$ARGUMENTS`
 
 If no run ID was provided, stop and show:
 
 ```text
-/eval-freeze <run-id>
+/eval-freeze <run-id> [--suite <path>]
 ```
 
-Set `<run-dir>` to `evals/runs/$ARGUMENTS`.
+A run created with `--suite` must be frozen with the same `--suite <path>`: the evaluator reference is copied from there. Freeze refuses the mismatch either way.
+
+Set `<run-dir>` to `evals/runs/$0`.
 
 ## Procedure
 
@@ -24,7 +28,7 @@ Set `<run-dir>` to `evals/runs/$ARGUMENTS`.
 3. Run:
 
    ```bash
-   npm run evidence:check -- evals/runs/$ARGUMENTS/venture
+   npm run evidence:check -- evals/runs/$0/venture
    ```
 
    Stop if it fails. Repair state integrity before freezing.
@@ -40,18 +44,20 @@ Set `<run-dir>` to `evals/runs/$ARGUMENTS`.
 5. Run:
 
    ```bash
-   npm run eval:verify -- $ARGUMENTS
+   npm run eval:verify -- $0
    ```
 
 6. Require successful integrity and evaluator-provenance verification. Report the frozen artifact SHA-256 and framework SHA-256.
-7. Do not modify any frozen artifact or evaluator input after this point. `SCORE.md` is intentionally the only scoring output outside the frozen digest.
+7. Do not modify any frozen artifact or evaluator input after this point. `scores/` — and a legacy root `SCORE.md` — is intentionally the only scoring output outside the frozen digest.
 
 ## Completion
 
 Tell the user to open a **fresh Claude Code session** and run exactly:
 
 ```text
-/eval-score $ARGUMENTS
+/eval-score $0 <judge-label>
 ```
+
+For a second independent judge, repeat that in another fresh session with a different label.
 
 Do not reproduce the scoring procedure. `eval-score` owns it.

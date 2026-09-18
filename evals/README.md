@@ -11,7 +11,8 @@ Evaluation uses four distinct artifact classes:
 - `cases/<case-id>/case.yaml` — canonical public input visible to the run;
 - `evals/reference/<case-id>.yaml` — evaluator-only expectations, forbidden during the run;
 - `evals/runs/<run-id>/` — record of one execution;
-- `evals/runs/<run-id>/evaluator/` — evaluator reference, rubric and scoring contract copied **only when the run is frozen**.
+- `evals/runs/<run-id>/evaluator/` — evaluator reference, rubric and scoring contract copied **only when the run is frozen**;
+- `evals/runs/<run-id>/scores/<judge-label>.md` — one file per independent judge, written after freeze.
 
 The Case Library is broader than the benchmark suite. A case only becomes part of the scored regression suite when a maintainer adds a matching evaluator reference under `evals/reference/`.
 
@@ -30,7 +31,9 @@ The active agent must never read `evals/reference/`, previous runs, evaluator bu
 
 `eval:freeze` refuses to freeze if the case or effective runtime changed after creation, if evaluator sources changed, if canonical venture state is schema-invalid, if no complete gate decision exists, or if `evidence:check` fails.
 
-Only after those checks pass does freeze create `evaluator/` and copy the evaluator-only inputs into the run. The frozen digest includes that evaluator bundle. `SCORE.md` remains outside the digest so an independent rescore can replace it without mutating the run.
+When the decision's next action is an experiment, freeze also requires that experiment to be designed and locked with success and failure rules that name the gate outcome they lead to — otherwise a later result could not be checked against it.
+
+Only after those checks pass does freeze create `evaluator/` and copy the evaluator-only inputs into the run. The frozen digest includes that evaluator bundle. `scores/` — and a legacy root `SCORE.md` — remains outside the digest, so any number of independent judges can score a run without mutating it. Freeze refuses a run that already has scores or an evaluator bundle, and any symbolic link: a frozen run holds regular files only.
 
 This separates three questions that should not be conflated:
 
@@ -64,51 +67,28 @@ In Claude Code:
 
 Freeze performs semantic validation before creating the immutable marker and evaluator bundle.
 
-### 4. Score — another fresh Claude Code session
+### 4. Score — another fresh Claude Code session per judge
 
 ```text
-/eval-score <run-id>
+/eval-score <run-id> <judge-label>
 ```
 
-Scoring reads only the frozen evaluator bundle for that run. It must not silently substitute the repository's current reference or current rubric.
+Each judge writes `scores/<judge-label>.md` and does not read another judge's score until its own is drafted. Two judges on the same run are what make a disagreement visible; one judge's total is not evidence of anything. Scoring reads only the frozen evaluator bundle for that run. It must not silently substitute the repository's current reference or current rubric.
 
 ### Low-level primitives
 
 ```bash
-npm run eval:new -- <case> <model-label>
+npm run eval:new -- <case> <model-label> [--suite <path>]
 npm run evidence:check -- evals/runs/<run-id>/venture
-npm run eval:freeze -- <run-id>
+npm run eval:freeze -- <run-id> [--suite <path>]
 npm run eval:verify -- <run-id>
 ```
 
 These are implementation primitives, not a second human workflow to memorize.
 
-## What to evaluate
+## What is scored
 
-For each run, evaluate whether Venture OS:
-
-1. identifies the critical uncertainties;
-2. discovers major existing alternatives;
-3. separates facts from assumptions;
-4. searches for disconfirming evidence;
-5. avoids treating a large market as direct validation;
-6. avoids premature product scope;
-7. proposes a cheap experiment when evidence is insufficient;
-8. preserves uncertainty instead of inventing confidence;
-9. produces an auditable gate decision;
-10. changes its conclusion appropriately when contradictory evidence is present.
-
-## Scoring the system, not the venture
-
-Use a 0–2 score for each behavior:
-
-- 0: missed or materially wrong;
-- 1: partially handled;
-- 2: handled clearly and correctly.
-
-The maximum behavior score is 20. This measures **Venture OS behavior**, not venture attractiveness.
-
-Reference expectations are coverage checks, not exact-answer keys. Stronger or differently worded discoveries should receive credit when they address the same underlying uncertainty.
+The behavior rubric — the ten behaviors and their 0–2 scale — lives in [`RUBRIC.md`](RUBRIC.md). It is an evaluator source: hashed at `eval:new`, copied into the run's `evaluator/` bundle at freeze, and read by judges only from that frozen copy.
 
 ## Public benchmark suite
 
@@ -134,6 +114,8 @@ This catches history-preservation and state-transition regressions. A future mod
 
 Do not commit real venture names, customer information, proprietary research, private outcomes, or evaluator references derived from sensitive projects here. Keep those benchmarks outside this repository and run them against a pinned Venture OS commit or recorded effective runtime hash.
 
+A private suite is a directory laid out like this repository — `cases/<id>/case.yaml` and `evals/reference/<id>.yaml`. Pass it to `/eval-new` and `/eval-freeze` with `--suite <path>`. Runs are still written under this checkout's `evals/runs/`, which is gitignored, and belong back in the suite's own storage once scored. Only the suite's directory name reaches the run, because the agent under test reads `metadata.json`.
+
 This gives the project three useful layers:
 
 - **public Case Library** — open, reusable inputs that contributors can extend;
@@ -149,7 +131,7 @@ When changing a skill or agent:
 1. create a run with `/eval-new` so effective runtime and evaluator-source provenance are recorded;
 2. execute each benchmark in a fresh session with `/eval-run`;
 3. freeze each run with `/eval-freeze`;
-4. score in a fresh session with `/eval-score` using only the frozen evaluator bundle;
+4. score each run in a fresh session per judge with `/eval-score <run-id> <judge-label>`, using only the frozen evaluator bundle;
 5. compare against previous frozen runs;
 6. keep changes that improve general behavior rather than one case only.
 

@@ -1,7 +1,7 @@
 ---
 name: eval-new
 description: Create a new isolated Venture OS eval run from a Case Library entry and model label. Use manually to start a benchmark without copying setup instructions.
-argument-hint: <case> <model-label>
+argument-hint: <case> <model-label> [--suite <path>]
 disable-model-invocation: true
 ---
 
@@ -12,8 +12,10 @@ Arguments: `$ARGUMENTS`
 If the case is missing, stop and show:
 
 ```text
-/eval-new <case> <model-label>
+/eval-new <case> <model-label> [--suite <path>]
 ```
+
+`--suite <path>` takes the case and its evaluator reference from an external suite directory laid out like this repository (`cases/<id>/case.yaml`, `evals/reference/<id>.yaml`) — a private holdout that must not be committed here. Only the suite's directory name is recorded in the run.
 
 ## Procedure
 
@@ -24,7 +26,7 @@ If the case is missing, stop and show:
    ```
 
 2. Capture the generated run ID from the command output or the newly created directory under `evals/runs/`.
-3. Do not inspect `evals/reference/`, other runs, other Case Library entries, or git history for expected answers.
+3. Do not inspect `evals/reference/` (nor a suite's), other runs, other Case Library entries, or git history for expected answers.
 4. Do **not** start the benchmark in this session. A fresh session is part of the contamination boundary.
 
 ## Completion
