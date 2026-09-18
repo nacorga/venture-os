@@ -362,7 +362,7 @@ test('freeze refuses a run that already has scores', (t) => {
 
   const freeze = runScript('freeze-eval-run.mjs', runId);
   assert.notEqual(freeze.status, 0);
-  assert.match(freeze.stderr, /scores\/ already exists before freeze/);
+  assert.match(freeze.stderr, /scores already exists before freeze/);
 });
 
 function writeCompletedVenture(runDir, state) {
@@ -517,4 +517,31 @@ test('every module a runtime script imports is itself hashed into the runtime', 
       assert.ok(hashed.has(imported), `${entry} imports ${imported}, which runtimePaths does not hash`);
     }
   }
+});
+
+test('freeze refuses a legacy SCORE.md written before freeze', (t) => {
+  const { runId, runDir } = createEvalRun(t);
+  fs.writeFileSync(path.join(runDir, 'SCORE.md'), '# Score\n');
+  const freeze = runScript('freeze-eval-run.mjs', runId);
+  assert.notEqual(freeze.status, 0);
+  assert.match(freeze.stderr, /SCORE\.md already exists before freeze/);
+});
+
+test('a symbolic link can neither be frozen nor slip into a frozen run', (t) => {
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'venture-os-outside-'));
+  t.after(() => fs.rmSync(outside, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(outside, 'notes.md'), '# Outside\n');
+
+  const before = createEvalRun(t);
+  fs.symlinkSync(path.join(outside, 'notes.md'), path.join(before.runDir, 'venture', 'research', 'linked.md'));
+  const refused = runScript('freeze-eval-run.mjs', before.runId);
+  assert.notEqual(refused.status, 0);
+  assert.match(refused.stderr, /regular files only.*venture\/research\/linked\.md/);
+
+  const after = createEvalRun(t);
+  assert.equal(runScript('freeze-eval-run.mjs', after.runId).status, 0);
+  fs.symlinkSync(path.join(outside, 'notes.md'), path.join(after.runDir, 'venture', 'research', 'linked.md'));
+  const verify = runScript('verify-eval-run.mjs', after.runId);
+  assert.notEqual(verify.status, 0);
+  assert.match(verify.stderr, /Not a regular file: venture\/research\/linked\.md/);
 });

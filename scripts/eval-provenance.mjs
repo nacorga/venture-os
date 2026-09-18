@@ -53,11 +53,28 @@ export function isExcludedFromRunDigest(relative) {
   return relative === 'FROZEN.json' || relative === 'SCORE.md' || relative.startsWith('scores/');
 }
 
+// A frozen run holds regular files and directories only. A symbolic link would
+// be hashed as its target, which can change outside the run, so it is reported
+// rather than followed; freeze refuses it and verify fails on it.
+function collectRunFiles(runDir, relativePath, files, irregular) {
+  for (const entry of fs.readdirSync(path.join(runDir, relativePath), { withFileTypes: true })) {
+    const child = path.posix.join(relativePath, entry.name);
+    if (entry.isDirectory()) collectRunFiles(runDir, child, files, irregular);
+    else if (entry.isFile()) files.push(child);
+    else irregular.push(child);
+  }
+}
+
 export function runDigest(runDir) {
   const files = [];
-  collectFiles(runDir, '', files);
+  const irregular = [];
+  collectRunFiles(runDir, '', files, irregular);
   const kept = files.filter((relative) => !isExcludedFromRunDigest(relative)).sort();
-  return { sha256: digestFiles(runDir, kept), files: kept };
+  return {
+    sha256: digestFiles(runDir, kept),
+    files: kept,
+    irregular: irregular.filter((relative) => !isExcludedFromRunDigest(relative)).sort(),
+  };
 }
 
 export const runtimePaths = [
@@ -167,7 +184,8 @@ export function verifyFrozenRun(runDir) {
     return { ok: false, errors: ['Frozen marker is invalid JSON.'], digest: null, marker: null };
   }
 
-  const { sha256: digest, files } = runDigest(runDir);
+  const { sha256: digest, files, irregular } = runDigest(runDir);
+  for (const relative of irregular) errors.push(`Not a regular file: ${relative}`);
   const expectedFiles = Array.isArray(marker.files) ? [...marker.files].sort() : [];
   if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) errors.push('File set changed after freeze.');
   if (digest !== marker.sha256) errors.push(`Expected ${marker.sha256}, got ${digest}`);
