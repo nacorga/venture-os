@@ -145,6 +145,8 @@ npm run eval:verdict -- <run-id>      # scores/pairs.json: ordered, tied or inve
 
 A pair verdict only pairs forks of the same parent, the same version of the pair, the same `--rep` and the same framework. A fork must be frozen while its parent is still under `evals/runs/`.
 
+The public suite carries one pair for `inventory-monitoring-saas` and one for `home-services-marketplace`. More are added when a run has failed an existing one, not before: a pair every run passes is the saturation this section exists to escape, and public pairs wear out once models have read them. The private holdout is where most discrimination should live.
+
 A tied pair does not fail; it says the pair did not discriminate. An inverted pair fails. `--cross-framework` forks a run frozen on one framework into a second phase on another, which is the lowest-noise way to test a change to how Venture OS decides: both versions start from the same phase-1 state. Pair verdicts never mix frameworks.
 
 ### Comparing two versions

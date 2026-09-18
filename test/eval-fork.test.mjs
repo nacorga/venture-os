@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { runDigest, sha256Buffer as sha256 } from '../scripts/eval-provenance.mjs';
+import { validateRevealPairFile } from '../scripts/reveal-utils.mjs';
 
 // The staged-reveal cycle end to end, with the model's work simulated as state
 // edits: a frozen parent, a fork with a revealed packet, a second decision, a
@@ -526,4 +527,27 @@ test('a pair verdict finds forks by their key, not by a name that happens to sha
   assert.equal(runScript('eval-verdict.mjs', first.runId).status, 0);
   const pairs = JSON.parse(fs.readFileSync(path.join(first.runDir, 'scores', 'pairs.json'), 'utf8')).pairs;
   assert.deepEqual(pairs, []);
+});
+
+test('a reveal pair is refused when it would leak or check nothing', (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'venture-os-pair-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const cases = [
+    ['a venture ID token in an item', (bad) => { bad.arms.a.items[0].text = 'As E004 showed, forty buyers were contacted.'; }, /venture ID token \(E004\)/],
+    ['a trap on an item the arm lacks', (bad) => { bad.expect.traps[0].item = 'PK-9'; }, /PK-9 is not an item of arm b/],
+    ['a trap that checks nothing', (bad) => { delete bad.expect.traps[0].max_strength; }, /checks nothing/],
+    ['an order without a second arm', (bad) => { delete bad.arms.b; delete bad.expect.b; bad.expect.traps = []; }, /an order needs both arms/],
+    ['a file named after another pair', (bad) => { bad.id = 'P002'; }, /must match the file name/],
+  ];
+  for (const [name, mutate, message] of cases) {
+    const bad = structuredClone(pair);
+    mutate(bad);
+    const filePath = path.join(dir, 'P001.yaml');
+    writeYaml(filePath, bad);
+    const result = validateRevealPairFile(filePath, caseId);
+    assert.equal(result.valid, false, name);
+    assert.match(result.errors.join('\n'), message, name);
+  }
+  writeYaml(path.join(dir, 'P001.yaml'), pair);
+  assert.equal(validateRevealPairFile(path.join(dir, 'P001.yaml'), caseId).valid, true);
 });

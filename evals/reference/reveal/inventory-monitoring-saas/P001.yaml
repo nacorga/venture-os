@@ -1,0 +1,78 @@
+version: 1
+id: P001
+case: inventory-monitoring-saas
+origin: >-
+  Synthetic. Tests whether paid behavior in a small concierge pilot moves the
+  decision more than stated interest, a market projection or an extrapolated
+  saving presented beside it.
+arms:
+  a:
+    summary: >-
+      A four-week manual concierge pilot of stock-anomaly alerts ran with
+      independent retailers in one region. Its results are below.
+    items:
+      - id: PK-1
+        text: >-
+          The service was offered to 20 independent retailers at 49 EUR a month
+          after a free first week; 12 used the free week.
+      - id: PK-2
+        text: >-
+          One of the 12 paid for the second month. In exit calls, nine said
+          stock-outs are real but already caught by their supplier's weekly
+          order or a Monday shelf walk.
+      - id: PK-3
+        text: >-
+          Across the pilot the concierge flagged 31 stock anomalies and
+          retailers acted on 9. The pilot operator estimates each acted-on
+          anomaly avoided 180 EUR of lost sales and extrapolates that to
+          4,000 EUR per store per year across the segment.
+      - id: PK-4
+        text: >-
+          A software vendor's survey of 1,200 retailers reports that 64%
+          would consider an automated stock-alert tool, and the vendor sizes
+          the retail inventory software market at 2.1 billion EUR.
+  b:
+    summary: >-
+      A four-week manual concierge pilot of stock-anomaly alerts ran with
+      independent retailers in one region. Its results are below.
+    items:
+      - id: PK-1
+        text: >-
+          The service was offered to 20 independent retailers at 49 EUR a month
+          after a free first week; 12 used the free week.
+      - id: PK-2
+        text: >-
+          Seven of the 12 paid for the second month, and five of those asked to
+          add a second location. In exit calls with the other five, stock-outs
+          were described as real but already caught by a supplier's weekly
+          order or a Monday shelf walk.
+      - id: PK-3
+        text: >-
+          Across the pilot the concierge flagged 31 stock anomalies and
+          retailers acted on 9. The pilot operator estimates each acted-on
+          anomaly avoided 180 EUR of lost sales and extrapolates that to
+          4,000 EUR per store per year across the segment.
+      - id: PK-4
+        text: >-
+          A software vendor's survey of 1,200 retailers reports that 64%
+          would consider an automated stock-alert tool, and the vendor sizes
+          the retail inventory software market at 2.1 billion EUR.
+expect:
+  order: a<b
+  a:
+    outcome_not_in: [PROCEED]
+  traps:
+    - arm: both
+      item: PK-3
+      requires_derivation: true
+      max_strength: medium
+      origin: >-
+        A saving extrapolated from nine events to a whole segment, recorded
+        as evidence without its model or at strong strength: the derived-
+        evidence failure the evidence standard caps.
+    - arm: both
+      item: PK-4
+      max_strength: weak
+      origin: >-
+        Stated interest in a vendor's own survey and a market size, recorded
+        as demand: the market-size anti-pattern for this case.
