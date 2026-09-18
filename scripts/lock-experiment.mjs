@@ -4,6 +4,7 @@ import YAML from 'yaml';
 import {
   experimentReadinessErrors,
   extractExperimentDesign,
+  structuredRoutingErrors,
   validateExperimentFile,
 } from './experiment-utils.mjs';
 
@@ -40,7 +41,7 @@ if (preregistration.locked_at || preregistration.design) {
   process.exit(1);
 }
 
-const readinessErrors = experimentReadinessErrors(experiment);
+const readinessErrors = [...experimentReadinessErrors(experiment), ...structuredRoutingErrors(experiment)];
 if (readinessErrors.length) {
   for (const error of readinessErrors) console.error(`Cannot lock ${experiment.id}: ${error}`);
   process.exit(1);

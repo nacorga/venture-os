@@ -32,6 +32,6 @@ Every experiment must specify:
 - failure signal;
 - ambiguous outcome handling;
 - maximum time or cost budget;
-- decision that follows each result.
+- decision that follows each result, as the gate outcome (`PROCEED`, `TEST` or `PARK`) each branch leads to plus what happens next.
 
 Avoid vanity metrics. A click is not willingness to pay unless the experiment genuinely makes that inference reasonable.

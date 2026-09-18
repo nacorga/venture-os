@@ -20,6 +20,8 @@ A PROCEED decision requires sufficient evidence for the next stage, not certaint
 A TEST decision requires a clearly named critical uncertainty and an experiment capable of reducing it.
 A PARK decision means current evidence does not justify further investment now. State what future evidence could reopen the venture.
 
+When the decision follows a completed experiment, start from the gate outcome its locked decision rule assigns to the recorded result branch. Depart from it only on evidence the preregistration did not anticipate, and name that evidence. Enthusiasm, activity or a near miss is what the preregistration was written to discount.
+
 For every decision, provide:
 - decision;
 - decisive evidence IDs;
