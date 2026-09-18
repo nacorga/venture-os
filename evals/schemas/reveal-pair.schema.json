@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://venture-os.dev/schemas/reveal-pair-v1.schema.json",
+  "title": "Reveal pair",
+  "description": "A planted evidence reveal for one case: one or two arms of evidence shown to a forked run after its first decision, and the evaluator-only expectations the second decision is checked against. Arms a and b of a pair differ in one decisive fact. Only an arm's summary and items reach the run.",
+  "type": "object",
+  "$defs": {
+    "outcome": { "enum": ["PROCEED", "TEST", "PARK"] },
+    "item": {
+      "type": "object",
+      "required": ["id", "text"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^PK-[0-9]+$" },
+        "text": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "arm": {
+      "type": "object",
+      "required": ["summary", "items"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 1 },
+        "items": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/item" } }
+      },
+      "additionalProperties": false
+    },
+    "armExpectation": {
+      "type": "object",
+      "properties": {
+        "outcome_in": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/outcome" }, "uniqueItems": true },
+        "outcome_not_in": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/outcome" }, "uniqueItems": true }
+      },
+      "additionalProperties": false
+    },
+    "trap": {
+      "type": "object",
+      "required": ["arm", "item", "origin"],
+      "properties": {
+        "arm": { "enum": ["a", "b", "both"] },
+        "item": { "type": "string", "pattern": "^PK-[0-9]+$" },
+        "max_strength": { "enum": ["strong", "medium", "weak", "unknown"] },
+        "requires_derivation": { "type": "boolean" },
+        "origin": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["version", "id", "case", "origin", "arms", "expect"],
+  "properties": {
+    "version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^P[0-9]{3,}$" },
+    "case": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "origin": { "type": "string", "minLength": 1 },
+    "arms": {
+      "type": "object",
+      "required": ["a"],
+      "properties": {
+        "a": { "$ref": "#/$defs/arm" },
+        "b": { "$ref": "#/$defs/arm" }
+      },
+      "additionalProperties": false
+    },
+    "expect": {
+      "type": "object",
+      "properties": {
+        "order": { "enum": ["a<b", "a>b"] },
+        "a": { "$ref": "#/$defs/armExpectation" },
+        "b": { "$ref": "#/$defs/armExpectation" },
+        "traps": { "type": "array", "items": { "$ref": "#/$defs/trap" } }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

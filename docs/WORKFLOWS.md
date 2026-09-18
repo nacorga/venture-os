@@ -124,6 +124,23 @@ Open another fresh Claude Code session for each judge:
 
 Each judge writes `scores/<judge-label>.md`. Scoring uses the frozen `evaluator/` bundle, never the repository's live reference/rubric as a silent substitute.
 
+### Session D — a second phase, per fork
+
+A frozen run can be forked and shown evidence it never saw (`evals/README.md` § Staged evidence reveal):
+
+```bash
+npm run eval:fork -- <run-id> --arm prereg-failure
+```
+
+Open a fresh Claude Code session for each fork:
+
+```text
+/eval-continue <fork-id>
+/eval-freeze <fork-id>
+```
+
+Then judge it without a model: `npm run eval:verdict -- <fork-id>`.
+
 Fresh-session boundaries are part of the evaluation design, not optional ceremony.
 
 Real or sensitive holdout benchmarks stay outside the public repository and should run against a pinned public commit or recorded effective runtime hash.
@@ -142,6 +159,8 @@ npm run case:validate -- [<case-id|path>]
 npm run eval:new -- <case> <model-label> [--suite <path>]
 npm run eval:freeze -- <run-id> [--suite <path>]
 npm run eval:verify -- <run-id>
+npm run eval:fork -- <run-id> --arm <arm> [--rep <n>] [--suite <path>] [--cross-framework]
+npm run eval:verdict -- <run-id>
 npm run repo:check
 ```
 

@@ -92,6 +92,8 @@ export const runtimePaths = [
   '.claude/skills/eval-new',
   '.claude/skills/eval-run',
   '.claude/skills/eval-freeze',
+  '.claude/skills/eval-continue',
+  'evals/schemas',
   'templates',
   'scripts/case-utils.mjs',
   'scripts/eval-suite.mjs',
@@ -104,6 +106,8 @@ export const runtimePaths = [
   'scripts/experiment-utils.mjs',
   'scripts/lock-experiment.mjs',
   'scripts/freeze-eval-run.mjs',
+  'scripts/fork-eval-run.mjs',
+  'scripts/reveal-utils.mjs',
   'scripts/verify-eval-run.mjs',
   'scripts/eval-provenance.mjs',
   'package.json',
@@ -150,24 +154,28 @@ export const evaluatorBundle = {
   reference_sha256: { source: 'reference', file: 'reference.yaml' },
   rubric_sha256: { source: 'rubric', file: 'rubric.md' },
   score_skill_sha256: { source: 'score_skill', file: 'score-skill.md' },
+  reveal_pair_sha256: { source: 'reveal_pair', file: 'reveal-pair.yaml' },
 };
 
-// The reference comes from the suite (this repository's by default, or an
-// external one passed with --suite); the rubric and scoring contract always
-// come from the Venture OS checkout doing the evaluation.
-export function evaluatorSourcePaths(root, caseName, referenceDir = path.join(root, 'evals', 'reference')) {
+export const requiredEvaluatorSources = ['rubric_sha256', 'score_skill_sha256'];
+
+// The reference and any reveal pair come from the suite (this repository's by
+// default, or an external one passed with --suite); the rubric and scoring
+// contract always come from the Venture OS checkout doing the evaluation.
+export function evaluatorSourcePaths(root, caseName, referenceDir = path.join(root, 'evals', 'reference'), pairId = null) {
   return {
     reference: path.join(referenceDir, `${caseName}.yaml`),
     rubric: path.join(root, 'evals', 'RUBRIC.md'),
     score_skill: path.join(root, '.claude', 'skills', 'eval-score', 'SKILL.md'),
+    reveal_pair: pairId ? path.join(referenceDir, 'reveal', caseName, `${pairId}.yaml`) : null,
   };
 }
 
-export function evaluatorSourceHashes(root, caseName, referenceDir) {
-  const sources = evaluatorSourcePaths(root, caseName, referenceDir);
+export function evaluatorSourceHashes(root, caseName, referenceDir, pairId = null) {
+  const sources = evaluatorSourcePaths(root, caseName, referenceDir, pairId);
   const hashes = {};
   for (const [key, { source }] of Object.entries(evaluatorBundle)) {
-    hashes[key] = fs.existsSync(sources[source]) ? sha256File(sources[source]) : null;
+    hashes[key] = sources[source] && fs.existsSync(sources[source]) ? sha256File(sources[source]) : null;
   }
   return hashes;
 }
