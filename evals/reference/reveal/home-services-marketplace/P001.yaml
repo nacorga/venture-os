@@ -1,0 +1,76 @@
+version: 1
+id: P001
+case: home-services-marketplace
+origin: >-
+  Synthetic. Tests whether repeat booking through the service — the fact that
+  separates a marketplace from a lead list — moves the decision more than
+  supply-side activity, a consumer survey or an operator projection.
+arms:
+  a:
+    summary: >-
+      A manually matched home-repair service ran for eight weeks in one
+      neighbourhood. Its results are below.
+    items:
+      - id: PK-1
+        text: >-
+          40 homeowners booked a first job through the service; 15
+          professionals signed up and 11 completed at least one job, with a
+          median response of three hours to a job request.
+      - id: PK-2
+        text: >-
+          Three of the 40 homeowners booked a second job through the service.
+          In 22 of the 40 first-job reports, the professional says the
+          homeowner has since contacted them directly for the next job.
+      - id: PK-3
+        text: >-
+          The operator's spreadsheet projects 310 EUR a year of take-rate
+          revenue per homeowner, assuming the first eight weeks repeat for a
+          year at a 15% take rate.
+      - id: PK-4
+        text: >-
+          A national consumer survey finds 71% of homeowners struggle to find
+          reliable tradespeople, and puts home services at 600 billion USD a
+          year.
+  b:
+    summary: >-
+      A manually matched home-repair service ran for eight weeks in one
+      neighbourhood. Its results are below.
+    items:
+      - id: PK-1
+        text: >-
+          40 homeowners booked a first job through the service; 15
+          professionals signed up and 11 completed at least one job, with a
+          median response of three hours to a job request.
+      - id: PK-2
+        text: >-
+          19 of the 40 homeowners booked a second job through the service.
+          In 4 of the 40 first-job reports, the professional says the
+          homeowner has since contacted them directly for the next job.
+      - id: PK-3
+        text: >-
+          The operator's spreadsheet projects 310 EUR a year of take-rate
+          revenue per homeowner, assuming the first eight weeks repeat for a
+          year at a 15% take rate.
+      - id: PK-4
+        text: >-
+          A national consumer survey finds 71% of homeowners struggle to find
+          reliable tradespeople, and puts home services at 600 billion USD a
+          year.
+expect:
+  order: a<b
+  a:
+    outcome_not_in: [PROCEED]
+  traps:
+    - arm: both
+      item: PK-3
+      requires_derivation: true
+      max_strength: medium
+      origin: >-
+        A year of revenue projected from eight weeks, recorded as evidence
+        without its model or at strong strength.
+    - arm: both
+      item: PK-4
+      max_strength: weak
+      origin: >-
+        A survey of a general frustration and a category size, recorded as
+        demand for this marketplace: the anti-pattern this case names.
