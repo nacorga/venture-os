@@ -1,0 +1,209 @@
+name: Prepare release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: Version increment
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+run-name: Prepare ${{ inputs.version_type }} release
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Validate and prepare version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Require the default branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Releases must be prepared from main; selected ref was ${GITHUB_REF}." >&2
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Calculate the next version
+        id: version
+        env:
+          VERSION_TYPE: ${{ inputs.version_type }}
+        run: |
+          case "$VERSION_TYPE" in
+            patch|minor|major) ;;
+            *) echo "Unsupported version type: ${VERSION_TYPE}" >&2; exit 1 ;;
+          esac
+          npm version "$VERSION_TYPE" --no-git-tag-version --ignore-scripts
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Preparing v${VERSION} (${VERSION_TYPE})."
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Run deterministic tests
+        run: npm test
+
+      - name: Check repository structure and release metadata
+        run: npm run repo:check
+
+      - name: Validate Case Library
+        run: npm run case:validate
+
+      - name: Smoke venture onboarding scaffold
+        run: |
+          npm run venture:new -- release-smoke "A B2B SaaS that helps small teams detect costly workflow anomalies before they become incidents"
+          npm run venture:check -- release-smoke
+
+      - name: Smoke eval input bridge
+        run: npm run eval:new -- inventory-monitoring-saas release-smoke
+
+      - name: Ensure the version is unpublished
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "Tag v${VERSION} already exists." >&2
+            exit 1
+          fi
+          if gh release view "v${VERSION}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v${VERSION} already exists." >&2
+            exit 1
+          fi
+
+  create_pr:
+    name: Open version pull request
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Create or reuse the version branch
+        id: branch
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          VERSION_TYPE: ${{ inputs.version_type }}
+        run: |
+          case "$VERSION_TYPE" in
+            patch|minor|major) ;;
+            *) echo "Unsupported version type: ${VERSION_TYPE}" >&2; exit 1 ;;
+          esac
+          npm version "$VERSION_TYPE" --no-git-tag-version --ignore-scripts
+          ACTUAL_VERSION="$(node -p "require('./package.json').version")"
+          if [[ "$ACTUAL_VERSION" != "$VERSION" ]]; then
+            echo "Calculated v${ACTUAL_VERSION}; expected v${VERSION}." >&2
+            exit 1
+          fi
+
+          BRANCH="release/v${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add package.json package-lock.json
+          git commit -m "chore(release): prepare v${VERSION}"
+
+          REMOTE_SHA="$(git ls-remote --heads origin "refs/heads/${BRANCH}" | awk '{print $1}')"
+          if [[ -n "$REMOTE_SHA" ]]; then
+            git fetch --no-tags origin "refs/heads/${BRANCH}"
+            REMOTE_TREE="$(git rev-parse FETCH_HEAD^{tree})"
+            LOCAL_TREE="$(git rev-parse HEAD^{tree})"
+            if [[ "$REMOTE_TREE" != "$LOCAL_TREE" ]]; then
+              echo "Branch ${BRANCH} already exists with different content." >&2
+              exit 1
+            fi
+            echo "Reusing existing branch ${BRANCH}."
+          else
+            git push origin "HEAD:refs/heads/${BRANCH}"
+          fi
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Open or reuse the pull request
+        id: pull-request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          VERSION_TYPE: ${{ inputs.version_type }}
+        run: |
+          PR_URL="$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --head "$BRANCH" \
+            --state open \
+            --json url \
+            --jq '.[0].url')"
+
+          if [[ -z "$PR_URL" ]]; then
+            cat > "$RUNNER_TEMP/release-pr.md" <<EOF
+          ## Next step
+
+          **Merge this pull request to publish v${VERSION}.** No second manual workflow run is needed.
+
+          ## Version change
+
+          This applies a **${VERSION_TYPE}** increment and updates package metadata from the current version to **v${VERSION}**.
+
+          After merge, **Publish release** validates the exact commit on the main branch, creates tag **v${VERSION}**, and publishes the GitHub release.
+
+          Generated by [Prepare release run #${GITHUB_RUN_NUMBER}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}).
+          EOF
+            if ! PR_URL="$(gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --base main \
+              --head "$BRANCH" \
+              --title "chore(release): prepare v${VERSION}" \
+              --body-file "$RUNNER_TEMP/release-pr.md")"; then
+              echo "::error::Enable Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests, then rerun this workflow."
+              exit 1
+            fi
+          fi
+
+          echo "url=${PR_URL}" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Next step"
+            echo
+            echo "Merge [the version pull request](${PR_URL}) to publish **v${VERSION}**."
+            echo
+            echo "No second manual workflow run is needed; publication starts automatically after merge."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Start required validation on the version branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.branch.outputs.branch }}
+        run: gh workflow run validate.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
