@@ -174,3 +174,15 @@ test('the summary aggregates judges and flags a disagreement wider than one poin
   assert.match(row, /judge-a 16, judge-b 14/);
   assert.match(row, /\| alternatives \|$/);
 });
+
+test('one malformed score file does not take the summary down', (t) => {
+  const run = frozenRun(t);
+  fs.mkdirSync(path.join(run.runDir, 'scores'));
+  fs.writeFileSync(path.join(run.runDir, 'scores', 'judge-a.md'), scoreFile('judge-a', { alternatives: 2 }));
+  fs.writeFileSync(path.join(run.runDir, 'scores', 'judge-b.md'), '# Score\n\n<!-- venture-os-score:start -->\nrubric: 2\njudge: judge-b\ntotal: 12\n<!-- venture-os-score:end -->\n');
+
+  const summary = runScript('eval-summary.mjs', '--case', caseId);
+  assert.equal(summary.status, 0, summary.stderr);
+  const row = summary.stdout.split('\n').find((line) => line.startsWith(`| ${run.runId} |`));
+  assert.match(row, /judge-a 2, judge-b unparsed/);
+});

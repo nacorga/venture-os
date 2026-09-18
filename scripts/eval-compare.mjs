@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { hashPathSet, verifyFrozenRun } from './eval-provenance.mjs';
+import { readForkKey } from './reveal-utils.mjs';
 import { parseYamlSource } from './venture-utils.mjs';
 
 // Blind pairwise comparison of two frozen runs of the same case. The build step
@@ -24,7 +25,7 @@ export const comparedBehaviors = [
   ['decision_justification', 'Given only what each run gathered, which run reached the decision its own evidence supports better?'],
 ];
 
-const toolFiles = ['scripts/eval-compare.mjs', 'scripts/eval-provenance.mjs', 'scripts/venture-utils.mjs'];
+const toolFiles = ['scripts/eval-compare.mjs', 'scripts/eval-provenance.mjs', 'scripts/reveal-utils.mjs', 'scripts/venture-utils.mjs'];
 
 function stop(message) {
   console.error(message);
@@ -65,7 +66,7 @@ function build(root, runA, runB) {
   });
   if (runA === runB) stop('Cannot compare a run with itself.');
   if (runs[0].metadata.case !== runs[1].metadata.case) stop('Cannot compare runs of different cases.');
-  const armOf = (run) => run.metadata.reveal?.arm ?? null;
+  const armOf = (run) => readForkKey(runsDir, run.id)?.reveal.arm ?? null;
   if (armOf(runs[0]) !== armOf(runs[1])) stop('Cannot compare a first phase with a fork, or forks of different arms.');
 
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
