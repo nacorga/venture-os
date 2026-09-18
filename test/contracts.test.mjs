@@ -544,6 +544,7 @@ test('a symbolic link can neither be frozen nor slip into a frozen run', (t) => 
   const verify = runScript('verify-eval-run.mjs', after.runId);
   assert.notEqual(verify.status, 0);
   assert.match(verify.stderr, /Not a regular file: venture\/research\/linked\.md/);
+});
 
 test('eval:new refuses to reuse an existing run ID', (t) => {
   // Run IDs have one-second resolution. Occupy the IDs of the next few seconds,

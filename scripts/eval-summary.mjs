@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import { looksForked, readForkKey } from './reveal-utils.mjs';
 import { parseYamlSource } from './venture-utils.mjs';
 
 // One read-out across frozen runs: judged scores with their spread between
 // judges, mechanical verdicts on forks, pair verdicts, blind comparisons and
-// fact-sheet alarms. Evaluator-side; it reads scores/ and never the runs'
-// frozen artifacts beyond metadata.
+// fact-sheet alarms. Evaluator-side; it reads each run's scores/, metadata,
+// marker and latest decision, and the sealed fork keys beside the runs.
 
 let args;
 try {
@@ -33,11 +34,16 @@ function readJson(filePath) {
   }
 }
 
+// A block that does not carry a scores map is treated as unparsed, so one
+// malformed file cannot take the summary down with it.
 export function parseScoreBlock(source) {
   const match = /<!-- venture-os-score:start -->\n([\s\S]*?)<!-- venture-os-score:end -->/.exec(source);
   if (!match) return null;
   const parsed = parseYamlSource(match[1], 'score block');
-  return parsed.valid ? parsed.value : null;
+  if (!parsed.valid) return null;
+  const { scores } = parsed.value;
+  if (!scores || typeof scores !== 'object' || Array.isArray(scores)) return null;
+  return parsed.value;
 }
 
 function short(sha) {
@@ -48,7 +54,12 @@ const runs = fs.existsSync(runsDir)
   ? fs.readdirSync(runsDir)
     .map((name) => ({ name, dir: path.join(runsDir, name) }))
     .filter(({ dir }) => fs.existsSync(path.join(dir, 'FROZEN.json')))
-    .map((run) => ({ ...run, metadata: readJson(path.join(run.dir, 'metadata.json')) ?? {}, marker: readJson(path.join(run.dir, 'FROZEN.json')) ?? {} }))
+    .map((run) => ({
+      ...run,
+      metadata: readJson(path.join(run.dir, 'metadata.json')) ?? {},
+      marker: readJson(path.join(run.dir, 'FROZEN.json')) ?? {},
+      forkKey: readForkKey(runsDir, run.name),
+    }))
     .filter(({ metadata }) => !args.values.case || metadata.case === args.values.case)
   : [];
 
@@ -71,8 +82,8 @@ out('# Eval summary');
 out();
 out(`${runs.length} frozen run(s) under \`${path.relative(process.cwd(), runsDir) || '.'}\`${args.values.case ? `, case ${args.values.case}` : ''}.`);
 
-const parents = runs.filter(({ metadata }) => !metadata.parent);
-const forks = runs.filter(({ metadata }) => metadata.parent);
+const parents = runs.filter((run) => !run.forkKey && !looksForked(run.dir));
+const forks = runs.filter((run) => run.forkKey);
 
 out();
 out('## First-phase runs and judges');
@@ -90,11 +101,12 @@ for (const run of parents) {
   for (const item of items) {
     const values = parsed.map((score) => score.block.scores[item]).filter((value) => typeof value === 'number');
     if (values.length > 1 && Math.max(...values) - Math.min(...values) > 1) disagreements.push(item);
+    if (!values.length) continue;
     const key = `${run.metadata.case}|${short(run.marker.framework_sha256)}|${item}`;
     if (!itemStats.has(key)) itemStats.set(key, []);
     itemStats.get(key).push(...values);
   }
-  const totals = scores.map((score) => (score.block ? `${score.judge} ${score.block.total}` : `${score.judge} unparsed`)).join(', ') || '—';
+  const totals = scores.map((score) => (score.block ? `${score.judge} ${score.block.total ?? '?'}` : `${score.judge} unparsed`)).join(', ') || '—';
   out(`| ${run.name} | ${run.metadata.case} | ${short(run.marker.framework_sha256)} | ${outcome} | ${scores.length} | ${totals} | ${disagreements.join(', ') || '—'} |`);
 }
 
@@ -122,7 +134,7 @@ else {
   for (const run of forks) {
     const verdict = readJson(path.join(run.dir, 'scores', 'mechanical.json'));
     if (!verdict) {
-      out(`| ${run.name} | ${run.metadata.reveal?.arm} | ${short(run.marker.framework_sha256)} | — | not run | — |`);
+      out(`| ${run.name} | ${run.forkKey.reveal.arm} | ${short(run.marker.framework_sha256)} | — | not run | — |`);
       continue;
     }
     const failed = verdict.checks.filter((check) => !check.pass).map((check) => check.check + (check.item ? ` ${check.item}` : '')).join(', ');
