@@ -28,11 +28,7 @@ function collectFiles(root, relativePath, output) {
   }
 }
 
-export function hashPathSet(root, relativePaths) {
-  const files = [];
-  for (const relativePath of relativePaths) collectFiles(root, relativePath, files);
-  files.sort();
-
+function digestFiles(root, files) {
   const hash = crypto.createHash('sha256');
   for (const relative of files) {
     hash.update(relative);
@@ -40,8 +36,28 @@ export function hashPathSet(root, relativePaths) {
     hash.update(fs.readFileSync(path.join(root, relative)));
     hash.update('\0');
   }
+  return hash.digest('hex');
+}
 
-  return { sha256: hash.digest('hex'), files };
+export function hashPathSet(root, relativePaths) {
+  const files = [];
+  for (const relativePath of relativePaths) collectFiles(root, relativePath, files);
+  files.sort();
+  return { sha256: digestFiles(root, files), files };
+}
+
+// What a frozen run's digest leaves out: the marker itself, and scoring output.
+// Scores are written after freeze by independent judges, so they can never be
+// part of what those judges are checking.
+export function isExcludedFromRunDigest(relative) {
+  return relative === 'FROZEN.json' || relative === 'SCORE.md' || relative.startsWith('scores/');
+}
+
+export function runDigest(runDir) {
+  const files = [];
+  collectFiles(runDir, '', files);
+  const kept = files.filter((relative) => !isExcludedFromRunDigest(relative)).sort();
+  return { sha256: digestFiles(runDir, kept), files: kept };
 }
 
 export const runtimePaths = [
@@ -61,6 +77,7 @@ export const runtimePaths = [
   '.claude/skills/eval-freeze',
   'templates',
   'scripts/case-utils.mjs',
+  'scripts/eval-suite.mjs',
   'scripts/new-venture.mjs',
   'scripts/new-eval-run.mjs',
   'scripts/check-evidence-consistency.mjs',
@@ -109,19 +126,82 @@ export function gitProvenance(root) {
   };
 }
 
-export function evaluatorSourcePaths(root, caseName) {
+// Evaluator-only inputs: hashed when a run is created, copied into
+// <run>/evaluator/<file> only when it is frozen. One map, so freeze and verify
+// cannot disagree about which inputs exist.
+export const evaluatorBundle = {
+  reference_sha256: { source: 'reference', file: 'reference.yaml' },
+  rubric_sha256: { source: 'rubric', file: 'rubric.md' },
+  score_skill_sha256: { source: 'score_skill', file: 'score-skill.md' },
+};
+
+// The reference comes from the suite (this repository's by default, or an
+// external one passed with --suite); the rubric and scoring contract always
+// come from the Venture OS checkout doing the evaluation.
+export function evaluatorSourcePaths(root, caseName, referenceDir = path.join(root, 'evals', 'reference')) {
   return {
-    reference: path.join(root, 'evals', 'reference', `${caseName}.yaml`),
-    rubric: path.join(root, 'evals', 'README.md'),
+    reference: path.join(referenceDir, `${caseName}.yaml`),
+    rubric: path.join(root, 'evals', 'RUBRIC.md'),
     score_skill: path.join(root, '.claude', 'skills', 'eval-score', 'SKILL.md'),
   };
 }
 
-export function evaluatorSourceHashes(root, caseName) {
-  const sources = evaluatorSourcePaths(root, caseName);
-  return {
-    reference_sha256: fs.existsSync(sources.reference) ? sha256File(sources.reference) : null,
-    rubric_sha256: fs.existsSync(sources.rubric) ? sha256File(sources.rubric) : null,
-    score_skill_sha256: fs.existsSync(sources.score_skill) ? sha256File(sources.score_skill) : null,
-  };
+export function evaluatorSourceHashes(root, caseName, referenceDir) {
+  const sources = evaluatorSourcePaths(root, caseName, referenceDir);
+  const hashes = {};
+  for (const [key, { source }] of Object.entries(evaluatorBundle)) {
+    hashes[key] = fs.existsSync(sources[source]) ? sha256File(sources[source]) : null;
+  }
+  return hashes;
+}
+
+export function verifyFrozenRun(runDir) {
+  const errors = [];
+  const markerPath = path.join(runDir, 'FROZEN.json');
+  if (!fs.existsSync(markerPath)) return { ok: false, errors: ['Run is not frozen.'], digest: null, marker: null };
+
+  let marker;
+  try {
+    marker = JSON.parse(fs.readFileSync(markerPath, 'utf8'));
+  } catch {
+    return { ok: false, errors: ['Frozen marker is invalid JSON.'], digest: null, marker: null };
+  }
+
+  const { sha256: digest, files } = runDigest(runDir);
+  const expectedFiles = Array.isArray(marker.files) ? [...marker.files].sort() : [];
+  if (JSON.stringify(files) !== JSON.stringify(expectedFiles)) errors.push('File set changed after freeze.');
+  if (digest !== marker.sha256) errors.push(`Expected ${marker.sha256}, got ${digest}`);
+
+  const evaluatorHashes = marker.evaluator_sources ?? {};
+  for (const [key, { file }] of Object.entries(evaluatorBundle)) {
+    const filePath = path.join(runDir, 'evaluator', file);
+    const expected = evaluatorHashes[key] ?? null;
+    if (expected === null) {
+      if (fs.existsSync(filePath)) errors.push(`Frozen evaluator input exists but the marker records no hash: evaluator/${file}`);
+      continue;
+    }
+    if (!fs.existsSync(filePath)) errors.push(`Frozen evaluator input missing: evaluator/${file}`);
+    else if (sha256File(filePath) !== expected) errors.push(`Frozen evaluator input hash mismatch: evaluator/${file}`);
+  }
+
+  const evaluatorProvenancePath = path.join(runDir, 'evaluator', 'PROVENANCE.json');
+  if (!fs.existsSync(evaluatorProvenancePath)) {
+    errors.push('Frozen evaluator provenance is missing.');
+  } else {
+    try {
+      const evaluatorProvenance = JSON.parse(fs.readFileSync(evaluatorProvenancePath, 'utf8'));
+      if (evaluatorProvenance.framework_sha256 !== marker.framework_sha256) {
+        errors.push('Frozen evaluator framework hash does not match FROZEN.json.');
+      }
+      for (const key of Object.keys(evaluatorBundle)) {
+        if ((evaluatorProvenance.evaluator_sources?.[key] ?? null) !== (evaluatorHashes[key] ?? null)) {
+          errors.push(`Frozen evaluator provenance disagrees on ${key}.`);
+        }
+      }
+    } catch {
+      errors.push('Frozen evaluator PROVENANCE.json is invalid JSON.');
+    }
+  }
+
+  return { ok: errors.length === 0, errors, digest, marker };
 }

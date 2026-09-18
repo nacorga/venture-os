@@ -13,6 +13,7 @@ import {
 } from '../scripts/case-utils.mjs';
 import {
   evaluatorSourceHashes,
+  runtimePaths,
   runtimeProvenance,
   sha256File,
 } from '../scripts/eval-provenance.mjs';
@@ -340,4 +341,180 @@ test('SCORE.md remains outside the frozen artifact hash', (t) => {
   fs.writeFileSync(scorePath, '# Score\n19/20\n');
   verify = runScript('verify-eval-run.mjs', runId);
   assert.equal(verify.status, 0, verify.stderr);
+});
+
+test('scores/ remains outside the frozen artifact hash', (t) => {
+  const { runId, runDir } = createEvalRun(t);
+  const freeze = runScript('freeze-eval-run.mjs', runId);
+  assert.equal(freeze.status, 0, `${freeze.stdout}\n${freeze.stderr}`);
+
+  fs.mkdirSync(path.join(runDir, 'scores'));
+  fs.writeFileSync(path.join(runDir, 'scores', 'judge-a.md'), '# Score\n');
+  fs.writeFileSync(path.join(runDir, 'scores', 'judge-b.md'), '# Score\n');
+  const verify = runScript('verify-eval-run.mjs', runId);
+  assert.equal(verify.status, 0, verify.stderr);
+});
+
+test('freeze refuses a run that already has scores', (t) => {
+  const { runId, runDir } = createEvalRun(t);
+  fs.mkdirSync(path.join(runDir, 'scores'));
+  fs.writeFileSync(path.join(runDir, 'scores', 'early.md'), '# Score\n');
+
+  const freeze = runScript('freeze-eval-run.mjs', runId);
+  assert.notEqual(freeze.status, 0);
+  assert.match(freeze.stderr, /scores\/ already exists before freeze/);
+});
+
+function writeCompletedVenture(runDir, state) {
+  const ventureDir = path.join(runDir, 'venture');
+  fs.writeFileSync(path.join(ventureDir, 'venture.yaml'), YAML.stringify(state));
+  fs.writeFileSync(path.join(ventureDir, 'decisions', 'D001.md'), decisionProjection(state));
+  fs.writeFileSync(path.join(runDir, 'RESULT.md'), decisionProjection(state, '# Result'));
+}
+
+test('an external suite supplies the case and reference without its path reaching the run', (t) => {
+  const suiteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'venture-os-suite-'));
+  t.after(() => fs.rmSync(suiteRoot, { recursive: true, force: true }));
+  const caseId = 'private-case';
+  fs.mkdirSync(path.join(suiteRoot, 'cases', caseId), { recursive: true });
+  fs.mkdirSync(path.join(suiteRoot, 'evals', 'reference'), { recursive: true });
+  fs.writeFileSync(path.join(suiteRoot, 'cases', caseId, 'case.yaml'), YAML.stringify(validCase({ id: caseId })));
+  const referencePath = path.join(suiteRoot, 'evals', 'reference', `${caseId}.yaml`);
+  fs.writeFileSync(referencePath, 'name: private-case\nexpected_uncertainties: []\nanti_patterns: []\n');
+
+  const created = runScript('new-eval-run.mjs', caseId, 'test-model', '--suite', suiteRoot);
+  assert.equal(created.status, 0, `${created.stdout}\n${created.stderr}`);
+  const runId = created.stdout.match(/^Created evals\/runs\/(\S+)$/m)[1];
+  const runDir = path.join(repoRoot, 'evals', 'runs', runId);
+  t.after(() => fs.rmSync(runDir, { recursive: true, force: true }));
+
+  const metadataText = fs.readFileSync(path.join(runDir, 'metadata.json'), 'utf8');
+  assert.equal(JSON.parse(metadataText).suite.label, path.basename(suiteRoot));
+  assert.equal(metadataText.includes(suiteRoot), false);
+  assert.equal(fs.readFileSync(path.join(runDir, 'RUN.md'), 'utf8').includes(suiteRoot), false);
+
+  writeCompletedVenture(runDir, validEvalState('suite-eval'));
+
+  const withoutSuite = runScript('freeze-eval-run.mjs', runId);
+  assert.notEqual(withoutSuite.status, 0);
+  assert.match(withoutSuite.stderr, /created from suite .*pass --suite/);
+
+  const freeze = runScript('freeze-eval-run.mjs', runId, '--suite', suiteRoot);
+  assert.equal(freeze.status, 0, `${freeze.stdout}\n${freeze.stderr}`);
+  assert.equal(
+    fs.readFileSync(path.join(runDir, 'evaluator', 'reference.yaml'), 'utf8'),
+    fs.readFileSync(referencePath, 'utf8'),
+  );
+  const verify = runScript('verify-eval-run.mjs', runId);
+  assert.equal(verify.status, 0, verify.stderr);
+});
+
+test('a suite case must live in a directory named by its id', (t) => {
+  const suiteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'venture-os-suite-'));
+  t.after(() => fs.rmSync(suiteRoot, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(suiteRoot, 'cases', 'wrong-dir'), { recursive: true });
+  fs.writeFileSync(path.join(suiteRoot, 'cases', 'wrong-dir', 'case.yaml'), YAML.stringify(validCase({ id: 'other-id' })));
+
+  const created = runScript('new-eval-run.mjs', 'wrong-dir', 'test-model', '--suite', suiteRoot);
+  assert.notEqual(created.status, 0);
+  assert.match(created.stderr, /must match directory name 'wrong-dir'/);
+});
+
+function testDecisionState() {
+  const state = validEvalState('test-decision');
+  state.assumptions = [{
+    id: 'A001',
+    statement: 'Buyers will commit to the outcome',
+    category: 'willingness_to_pay',
+    criticality: 'critical',
+    status: 'unknown',
+    evidence_ids: [],
+  }];
+  const decided = {
+    id: 'N004',
+    type: 'experiment',
+    assumption_id: 'A001',
+    instruction: 'Run a bounded commitment test.',
+    success_signal: 'At least two buyers commit.',
+    failure_signal: 'No buyer commits.',
+    depends_on: [],
+  };
+  state.latest_decision.outcome = 'TEST';
+  state.latest_decision.snapshot.next_action = structuredClone(decided);
+  state.latest_decision.snapshot.blocking_assumptions = ['A001'];
+  state.blocking_assumptions = ['A001'];
+  state.next_action = structuredClone(decided);
+  return state;
+}
+
+function lockedExperiment() {
+  const design = {
+    primary_assumption_id: 'A001',
+    target: { description: 'Primary ICP', sample_goal: 5 },
+    procedure: ['Offer a paid pilot'],
+    assets: ['Offer'],
+    budget: { max_days: 5, max_cash: 0, currency: 'EUR' },
+    signals: {
+      success: ['At least two buyers commit'],
+      failure: ['No buyer commits'],
+      ambiguous: ['Exactly one buyer commits'],
+    },
+    decision_rules: {
+      on_success: { outcome: 'PROCEED', instruction: 'Advance to positioning.' },
+      on_failure: { outcome: 'PARK', instruction: 'Park on first-party evidence.' },
+      on_ambiguous: 'Park unless the one commitment is a paid one.',
+    },
+  };
+  return {
+    version: 1,
+    id: 'X001',
+    name: 'Commitment test',
+    status: 'designed',
+    ...structuredClone(design),
+    preregistration: { locked_at: '2026-09-18T08:00:00.000Z', design },
+    results: { observations: [], evidence_ids: [], completed_at: null },
+  };
+}
+
+test('a decision to experiment cannot freeze without a locked, outcome-routed experiment', (t) => {
+  const { runId, runDir } = createEvalRun(t);
+  writeCompletedVenture(runDir, testDecisionState());
+
+  const freeze = runScript('freeze-eval-run.mjs', runId);
+  assert.notEqual(freeze.status, 0);
+  assert.match(freeze.stderr, /decides an experiment on A001, but no locked experiment/);
+});
+
+test('a decision to experiment freezes once its experiment is locked with routed outcomes', (t) => {
+  const { runId, runDir } = createEvalRun(t);
+  const state = testDecisionState();
+  state.stage = 'experiment';
+  state.next_action = {
+    id: 'N005',
+    type: 'experiment',
+    assumption_id: 'A001',
+    experiment_id: 'X001',
+    instruction: 'Execute X001.',
+    success_signal: null,
+    failure_signal: null,
+    depends_on: [],
+  };
+  writeCompletedVenture(runDir, state);
+  const experimentDir = path.join(runDir, 'venture', 'experiments', 'X001-commitment');
+  fs.mkdirSync(experimentDir, { recursive: true });
+  fs.writeFileSync(path.join(experimentDir, 'experiment.yaml'), YAML.stringify(lockedExperiment()));
+
+  const freeze = runScript('freeze-eval-run.mjs', runId);
+  assert.equal(freeze.status, 0, `${freeze.stdout}\n${freeze.stderr}`);
+});
+
+test('every module a runtime script imports is itself hashed into the runtime', () => {
+  const hashed = new Set(runtimePaths);
+  for (const entry of runtimePaths.filter((item) => item.endsWith('.mjs'))) {
+    const source = fs.readFileSync(path.join(repoRoot, entry), 'utf8');
+    for (const [, specifier] of source.matchAll(/from '(\.\/[^']+)'/g)) {
+      const imported = path.posix.join(path.posix.dirname(entry), specifier);
+      assert.ok(hashed.has(imported), `${entry} imports ${imported}, which runtimePaths does not hash`);
+    }
+  }
 });
