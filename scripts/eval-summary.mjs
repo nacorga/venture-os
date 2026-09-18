@@ -180,10 +180,10 @@ else {
 out();
 out('## Sessions');
 out();
-// Written by scripts/eval-batch.mjs; a run without it was produced by hand,
-// under whatever configuration that machine's Claude Code had.
+// Written by scripts/eval-batch.mjs; a run without it was produced outside
+// the runner, under whatever configuration that machine's Claude Code had.
 const sessions = runs.map((run) => ({ run, telemetry: readJson(path.join(run.dir, 'telemetry.json')) })).filter(({ telemetry }) => telemetry);
-if (!sessions.length) out('No session telemetry: every run here was produced by hand.');
+if (!sessions.length) out('No session telemetry: every run here was produced outside the runner.');
 else {
   out('| Run | Skill | Model | Effort | Minutes | Cost (USD, list) | Permission denials |');
   out('| --- | --- | --- | --- | --- | --- | --- |');
@@ -191,8 +191,8 @@ else {
     const cost = typeof telemetry.total_cost_usd === 'number' ? telemetry.total_cost_usd.toFixed(2) : '?';
     out(`| ${run.name} | ${String(telemetry.prompt).split(' ')[0]} | ${telemetry.model ?? '?'} | ${telemetry.requested?.effort ?? '?'} | ${typeof telemetry.wall_seconds === 'number' ? (telemetry.wall_seconds / 60).toFixed(1) : '?'} | ${cost} | ${telemetry.permission_denials?.length ?? '?'} |`);
   }
-  const byHand = runs.length - sessions.length;
-  if (byHand) out(`\n${byHand} run(s) without telemetry were produced by hand.`);
+  const outside = runs.length - sessions.length;
+  if (outside) out(`\n${outside} run(s) without telemetry were produced outside the runner.`);
   const configurations = new Set(sessions.map(({ telemetry }) => JSON.stringify(telemetry.configuration)));
   if (configurations.size > 1) out(`\nThese sessions ran under ${configurations.size} different configurations: compare runs only within one.`);
 }
