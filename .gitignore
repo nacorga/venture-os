@@ -2,6 +2,7 @@
 node_modules/
 .claude/settings.local.json
 evals/runs/
+evals/compare/
 ventures/*
 !ventures/.gitkeep
 *.log

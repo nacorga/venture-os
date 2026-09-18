@@ -545,3 +545,26 @@ test('a symbolic link can neither be frozen nor slip into a frozen run', (t) => 
   assert.notEqual(verify.status, 0);
   assert.match(verify.stderr, /Not a regular file: venture\/research\/linked\.md/);
 });
+
+test('eval:new refuses to reuse an existing run ID', (t) => {
+  // Run IDs have one-second resolution. Occupy the IDs of the next few seconds,
+  // as an earlier run of the same case and label would, and eval:new must refuse
+  // rather than write into one of them.
+  const label = `collision-${process.pid}`;
+  const occupied = [];
+  for (let offset = 0; offset < 5; offset += 1) {
+    const stamp = new Date(Date.now() + offset * 1000).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+    const runDir = path.join(repoRoot, 'evals', 'runs', `${stamp}-inventory-monitoring-saas-${label}`);
+    fs.mkdirSync(runDir, { recursive: true });
+    fs.writeFileSync(path.join(runDir, 'RESULT.md'), '# Earlier run\n');
+    occupied.push(runDir);
+  }
+  t.after(() => { for (const runDir of occupied) fs.rmSync(runDir, { recursive: true, force: true }); });
+
+  const again = runScript('new-eval-run.mjs', 'inventory-monitoring-saas', label);
+  assert.notEqual(again.status, 0);
+  assert.match(again.stderr, /Eval run already exists/);
+  for (const runDir of occupied) {
+    assert.deepEqual(fs.readdirSync(runDir), ['RESULT.md']);
+  }
+});

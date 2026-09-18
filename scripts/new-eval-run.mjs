@@ -52,6 +52,16 @@ const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/,
 const runId = `${stamp}-${caseName}-${modelLabel}`;
 const runDir = path.join(root, 'evals', 'runs', runId);
 const ventureDir = path.join(runDir, 'venture');
+fs.mkdirSync(path.dirname(runDir), { recursive: true });
+try {
+  // Created exclusively: two runs of one case and label in the same second
+  // would otherwise share a directory.
+  fs.mkdirSync(runDir);
+} catch (error) {
+  if (error.code !== 'EEXIST') throw error;
+  console.error(`Eval run already exists: ${runId}. Run IDs have one-second resolution; wait a second or use another model label.`);
+  process.exit(1);
+}
 
 for (const sub of ['research', 'decisions', 'experiments', 'learning']) {
   fs.mkdirSync(path.join(ventureDir, sub), { recursive: true });

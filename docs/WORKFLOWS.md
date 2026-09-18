@@ -141,6 +141,25 @@ Open a fresh Claude Code session for each fork:
 
 Then judge it without a model: `npm run eval:verdict -- <fork-id>`.
 
+### Session E — compare two runs blind, once per judge
+
+```bash
+npm run eval:compare -- <run-a> <run-b>
+```
+
+Open a fresh Claude Code session for each judge:
+
+```text
+/eval-compare <compare-id> <judge-label>
+```
+
+Unblind outside any judge session, then read everything together:
+
+```bash
+npm run eval:compare -- --unblind <compare-id>
+npm run eval:summary
+```
+
 Fresh-session boundaries are part of the evaluation design, not optional ceremony.
 
 Real or sensitive holdout benchmarks stay outside the public repository and should run against a pinned public commit or recorded effective runtime hash.
@@ -160,7 +179,9 @@ npm run eval:new -- <case> <model-label> [--suite <path>]
 npm run eval:freeze -- <run-id> [--suite <path>]
 npm run eval:verify -- <run-id>
 npm run eval:fork -- <run-id> --arm <arm> [--rep <n>] [--suite <path>] [--model-label <label>] [--cross-framework]
-npm run eval:verdict -- <run-id>
+npm run eval:verdict -- <run-id> [--facts-only]
+npm run eval:compare -- <run-a> <run-b> | --unblind <compare-id>
+npm run eval:summary -- [--runs <dir>] [--compare <dir>] [--case <id>]
 npm run repo:check
 ```
 

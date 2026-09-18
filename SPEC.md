@@ -73,7 +73,7 @@ Current venture skills:
 - `venture-learn`
 - `venture-status`
 
-Evaluation lifecycle skills are separate and preserve isolation boundaries between run, freeze, and score: `eval-new`, `eval-run`, `eval-freeze`, `eval-continue` (the second phase of a forked run) and `eval-score`.
+Evaluation lifecycle skills are separate and preserve isolation boundaries between run, freeze, and score: `eval-new`, `eval-run`, `eval-freeze`, `eval-continue` (the second phase of a forked run), `eval-score` and `eval-compare` (one judge of a blind pairwise comparison).
 
 ### 4.4 Subagents
 
@@ -186,7 +186,7 @@ The Case Library contains inputs, not answer keys. A public case must not encode
 
 The scored public regression subset has maintainer-owned evaluator expectations under `evals/reference/`. Public evals measure decision behavior, not whether the system reproduces a predetermined final verdict.
 
-The regression suite should measure whether Venture OS:
+The regression suite judges whether Venture OS:
 
 - identifies critical uncertainties;
 - discovers major alternatives;
@@ -195,11 +195,11 @@ The regression suite should measure whether Venture OS:
 - avoids weak market-size proxies;
 - avoids premature product scope;
 - proposes cheap credible experiments when appropriate;
-- preserves uncertainty rather than fabricating certainty;
-- produces auditable gate decisions;
-- changes analysis when contradictory evidence appears.
+- preserves uncertainty rather than fabricating certainty.
 
-The rubric itself lives in `evals/RUBRIC.md`. Behavior 10 is also measured directly: a frozen run can be forked, shown evidence it never saw, and its second decision checked by script against its own preregistration or against a planted reveal pair. Run and score evals in isolated fresh sessions, one per judge. Real or sensitive holdout benchmarks stay outside the public repository, are passed to the harness with `--suite <path>`, and run against a pinned public commit.
+It checks by script, rather than judging, that gate decisions are auditable and that contradictory evidence changes the analysis. Judged totals are a floor alarm; mechanical verdicts, blind pairwise comparison and the spread between independent judges are what compare two versions of Venture OS.
+
+The rubric itself lives in `evals/RUBRIC.md`. Whether contradictory evidence changes the analysis is measured directly rather than judged: a frozen run can be forked, shown evidence it never saw, and its second decision checked by script against its own preregistration or against a planted reveal pair. Run and score evals in isolated fresh sessions, one per judge. Real or sensitive holdout benchmarks stay outside the public repository, are passed to the harness with `--suite <path>`, and run against a pinned public commit.
 
 ## 11. v0.1 success criteria
 

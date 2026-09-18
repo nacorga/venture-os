@@ -151,6 +151,7 @@ Start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - `evals/reference/` — evaluator-only expectations for the scored public regression subset, including planted reveal pairs under `evals/reference/reveal/`.
 - `evals/schemas/` — the format of reveal pairs.
 - `evals/runs/` — generated benchmark executions.
+- `evals/compare/` — generated blind pairwise comparisons.
 - `scripts/` — deterministic mechanics; business judgment remains with agents and humans.
 - `test/` — deterministic regression tests for repository contracts.
 
