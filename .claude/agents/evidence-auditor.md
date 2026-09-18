@@ -24,7 +24,7 @@ Flag:
 - evidence transported across segments without a concrete `transport_justification`;
 - evidence linked to an assumption even though it measures a related but different quantity (for example price used as evidence of cadence or willingness to pay);
 - derived quantitative records that omit model, method, applicability conditions, segment, or verification status;
-- derived quantitative records marked `strong` without an independent re-derivation or equivalent second check;
+- derived quantitative records marked `strong` whose `verification_note` does not describe a real second check of both the arithmetic and the model's applicability (the checker enforces that the flag and note exist; you judge whether the note is true);
 - superseded evidence whose replacement has not propagated to every affected assumption;
 - prose artifacts that still assert a superseded conclusion or figure without an inline corrected/superseded marker at the stale site;
 - summary correction blocks that claim a fix while stale claims remain elsewhere;

@@ -126,6 +126,12 @@ for (const item of evidence.values()) {
   }
 
   if (item.derivation && !item.segment) fail(`${item.id} is derived but has no explicit segment`);
+  if (item.derivation && item.strength === 'strong' && !item.superseded_by) {
+    const note = item.derivation.verification_note;
+    if (item.derivation.independently_verified !== true || typeof note !== 'string' || note.trim() === '') {
+      fail(`${item.id} is derived and strong without a recorded second check; cap it at medium or set derivation.independently_verified with a verification_note`);
+    }
+  }
 
   if (item.superseded_by) {
     if (item.superseded_by === item.id) fail(`${item.id} supersedes itself`);
