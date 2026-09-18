@@ -26,9 +26,15 @@ signals:
   ambiguous: []
 
 decision_rules:
-  on_success: ""
-  on_failure: ""
-  on_ambiguous: ""
+  on_success:
+    outcome: null
+    instruction: ""
+  on_failure:
+    outcome: null
+    instruction: ""
+  on_ambiguous:
+    outcome: null
+    instruction: ""
 
 preregistration:
   locked_at: null

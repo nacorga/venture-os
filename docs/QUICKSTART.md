@@ -107,7 +107,7 @@ Before an experiment moves from `designed` to `running`, Venture OS preregisters
 npm run experiment:lock -- ventures/my-venture/experiments/<experiment>/experiment.yaml
 ```
 
-The lock snapshots the primary assumption, target, procedure, assets, budget, signals and decision rules. Those fields must not change after results begin arriving. `npm run evidence:check -- ventures/my-venture` verifies the lock together with assumption and evidence references.
+The lock snapshots the primary assumption, target, procedure, assets, budget, signals and decision rules. It refuses success and failure rules that do not name the gate outcome they lead to. Those fields must not change after results begin arriving. `npm run evidence:check -- ventures/my-venture` verifies the lock together with assumption and evidence references.
 
 ## 7. Learn from a real experiment
 

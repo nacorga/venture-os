@@ -10,6 +10,8 @@ Target venture directory: `$ARGUMENTS`
 
 Read `framework/gates.md`, the target venture state, all relevant evidence, and the latest challenge report.
 
+When the decision follows a completed experiment, read its locked `preregistration.design.decision_rules` and `results.branch` before the gate. The rule for that branch is the default outcome. The gatekeeper may depart from it only on evidence the preregistration did not anticipate, and the decision file must record the branch, the preregistered outcome and any departure under `## Pre-registered routing`.
+
 Before invoking the gatekeeper:
 
 1. invoke `evidence-auditor` when evidence quality, quantitative derivations, supersessions, framework claims, or segment transport could affect the decision;

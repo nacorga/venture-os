@@ -28,6 +28,10 @@ List the decision-time `blocking_assumptions`. Identify the one targeted by the 
 
 Concise explanation of why this outcome is justified now.
 
+## Pre-registered routing
+
+Only when this decision follows a completed experiment. Name the experiment `X###`, the branch its results fell in (`success`, `failure` or `ambiguous`, as recorded in `results.branch`), and the gate outcome its locked decision rule assigns to that branch. If this outcome differs from the preregistered one, state the new evidence that justifies departing from it. A departure without new evidence is post-hoc rationalization, not a decision.
+
 ## Decision snapshot
 
 This block is an immutable snapshot of the decision-time state. It is copied from `latest_decision.snapshot`, not from the current operational fields after the workflow advances.

@@ -47,6 +47,24 @@ function nonEmptyStrings(values) {
   return Array.isArray(values) && values.length > 0 && values.every((value) => typeof value === 'string' && value.trim().length > 0);
 }
 
+export const gateOutcomes = ['PROCEED', 'TEST', 'PARK'];
+
+// A decision rule is either legacy prose or { outcome, instruction }. Only the
+// structured form names the gate outcome a result routes to, which is what makes
+// a later decision checkable against its preregistration.
+export function decisionRuleOutcome(rule) {
+  return rule && typeof rule === 'object' && gateOutcomes.includes(rule.outcome) ? rule.outcome : null;
+}
+
+// An ambiguous result may route to more than one outcome, so on_ambiguous may
+// leave its outcome null as long as the instruction says how it is decided.
+function decisionRuleIsExplicit(rule, { outcomeRequired }) {
+  if (typeof rule === 'string') return rule.trim().length > 0;
+  if (!rule || typeof rule !== 'object') return false;
+  if (outcomeRequired && decisionRuleOutcome(rule) === null) return false;
+  return typeof rule.instruction === 'string' && rule.instruction.trim().length > 0;
+}
+
 export function experimentReadinessErrors(experiment) {
   const errors = [];
 
@@ -61,8 +79,7 @@ export function experimentReadinessErrors(experiment) {
   }
 
   for (const rule of ['on_success', 'on_failure', 'on_ambiguous']) {
-    const value = experiment.decision_rules?.[rule];
-    if (typeof value !== 'string' || value.trim().length === 0) {
+    if (!decisionRuleIsExplicit(experiment.decision_rules?.[rule], { outcomeRequired: rule !== 'on_ambiguous' })) {
       errors.push(`${experiment.id} decision_rules.${rule} must be explicit before preregistration`);
     }
   }
@@ -74,6 +91,18 @@ export function experimentReadinessErrors(experiment) {
     errors.push(`${experiment.id} budget.max_cash must be an explicit non-negative cost cap before preregistration`);
   }
 
+  return errors;
+}
+
+// Required when a design is locked from now on, and deliberately not re-checked
+// after lock: designs preregistered with prose rules stay valid as they were.
+export function structuredRoutingErrors(experiment) {
+  const errors = [];
+  for (const rule of ['on_success', 'on_failure']) {
+    if (decisionRuleOutcome(experiment.decision_rules?.[rule]) === null) {
+      errors.push(`${experiment.id} decision_rules.${rule} must name its gate outcome as { outcome: PROCEED|TEST|PARK, instruction }`);
+    }
+  }
   return errors;
 }
 

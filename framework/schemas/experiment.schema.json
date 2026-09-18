@@ -48,13 +48,27 @@
       },
       "additionalProperties": false
     },
+    "decision_rule": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": ["outcome", "instruction"],
+          "properties": {
+            "outcome": { "enum": ["PROCEED", "TEST", "PARK", null] },
+            "instruction": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "decision_rules": {
       "type": "object",
       "required": ["on_success", "on_failure", "on_ambiguous"],
       "properties": {
-        "on_success": { "type": "string" },
-        "on_failure": { "type": "string" },
-        "on_ambiguous": { "type": "string" }
+        "on_success": { "$ref": "#/$defs/decision_rule" },
+        "on_failure": { "$ref": "#/$defs/decision_rule" },
+        "on_ambiguous": { "$ref": "#/$defs/decision_rule" }
       },
       "additionalProperties": false
     },
@@ -159,7 +173,8 @@
             { "type": "string", "format": "date" },
             { "type": "null" }
           ]
-        }
+        },
+        "branch": { "enum": ["success", "failure", "ambiguous", null] }
       },
       "additionalProperties": true
     },

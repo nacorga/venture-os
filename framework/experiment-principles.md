@@ -42,6 +42,8 @@ No universal conversion threshold defines validation. Thresholds must reflect tr
 
 Write success, failure, and ambiguous criteria before results arrive. This reduces post-hoc rationalization.
 
+Pre-register where each result leads, not only what counts as each result. The success and failure decision rules name the gate outcome they route to — `PROCEED`, `TEST` or `PARK` — so the decision that follows the experiment can be read against them. A later decision may depart from its preregistered outcome only on evidence the design did not anticipate, and the decision record must say so.
+
 ## One primary assumption
 
 Experiments may produce secondary learning, but each experiment should have one primary uncertainty that determines its design.

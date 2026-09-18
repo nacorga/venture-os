@@ -99,8 +99,8 @@ function baseExperiment() {
       ambiguous: ['Exactly one target behavior occurs'],
     },
     decision_rules: {
-      on_success: 'Proceed to the next uncertainty.',
-      on_failure: 'Revisit the demand thesis.',
+      on_success: { outcome: 'PROCEED', instruction: 'Proceed to the next uncertainty.' },
+      on_failure: { outcome: 'PARK', instruction: 'Revisit the demand thesis.' },
       on_ambiguous: 'Run one bounded follow-up test.',
     },
     preregistration: {
@@ -163,6 +163,95 @@ test('experiment:lock rejects an incomplete execution design', (t) => {
   const unchanged = YAML.parse(fs.readFileSync(experimentPath, 'utf8'));
   assert.equal(unchanged.preregistration.locked_at, null);
   assert.equal(unchanged.preregistration.design, null);
+});
+
+test('experiment:lock requires success and failure rules to name their gate outcome', (t) => {
+  const experiment = baseExperiment();
+  experiment.decision_rules.on_failure = 'Revisit the demand thesis.';
+  const { experimentPath } = createFixture(t, experiment);
+
+  const lock = runScript('lock-experiment.mjs', experimentPath);
+  assert.notEqual(lock.status, 0);
+  assert.match(lock.stderr, /decision_rules\.on_failure must name its gate outcome/);
+  assert.equal(YAML.parse(fs.readFileSync(experimentPath, 'utf8')).preregistration.locked_at, null);
+});
+
+test('experiment:lock rejects a structured rule whose outcome is still a draft', (t) => {
+  const experiment = baseExperiment();
+  experiment.decision_rules.on_success = { outcome: null, instruction: 'Proceed to the next uncertainty.' };
+  const { experimentPath } = createFixture(t, experiment);
+
+  const lock = runScript('lock-experiment.mjs', experimentPath);
+  assert.notEqual(lock.status, 0);
+  assert.match(lock.stderr, /decision_rules\.on_success must be explicit/);
+});
+
+test('an ambiguous rule may leave its outcome open when its instruction says how it is chosen', (t) => {
+  const experiment = baseExperiment();
+  experiment.decision_rules.on_ambiguous = { outcome: null, instruction: 'Park unless the one commitment is a paid one.' };
+  const { experimentPath } = createFixture(t, experiment);
+  const lock = runScript('lock-experiment.mjs', experimentPath);
+  assert.equal(lock.status, 0, `${lock.stdout}\n${lock.stderr}`);
+});
+
+test('an ambiguous rule with neither outcome nor instruction cannot be locked', (t) => {
+  const experiment = baseExperiment();
+  experiment.decision_rules.on_ambiguous = { outcome: null, instruction: '' };
+  const { experimentPath } = createFixture(t, experiment);
+  const lock = runScript('lock-experiment.mjs', experimentPath);
+  assert.notEqual(lock.status, 0);
+  assert.match(lock.stderr, /decision_rules\.on_ambiguous must be explicit/);
+});
+
+test('a design locked with prose decision rules remains valid', (t) => {
+  const experiment = baseExperiment();
+  experiment.decision_rules = {
+    on_success: 'Proceed to the next uncertainty.',
+    on_failure: 'Revisit the demand thesis.',
+    on_ambiguous: 'Run one bounded follow-up test.',
+  };
+  experiment.status = 'running';
+  experiment.preregistration = {
+    locked_at: '2026-09-16T08:00:00.000Z',
+    design: {
+      primary_assumption_id: experiment.primary_assumption_id,
+      target: experiment.target,
+      procedure: experiment.procedure,
+      assets: experiment.assets,
+      budget: experiment.budget,
+      signals: experiment.signals,
+      decision_rules: experiment.decision_rules,
+    },
+  };
+  const { ventureDir } = createFixture(t, experiment);
+
+  const check = runScript('check-venture-integrity.mjs', ventureDir);
+  assert.equal(check.status, 0, `${check.stdout}\n${check.stderr}`);
+});
+
+test('changing a preregistered gate outcome after lock is rejected', (t) => {
+  const { ventureDir, experimentPath } = createFixture(t);
+  const lock = runScript('lock-experiment.mjs', experimentPath);
+  assert.equal(lock.status, 0, `${lock.stdout}\n${lock.stderr}`);
+
+  const experiment = YAML.parse(fs.readFileSync(experimentPath, 'utf8'));
+  experiment.status = 'running';
+  experiment.decision_rules.on_failure.outcome = 'TEST';
+  fs.writeFileSync(experimentPath, YAML.stringify(experiment));
+
+  const check = runScript('check-experiment-consistency.mjs', ventureDir);
+  assert.notEqual(check.status, 0);
+  assert.match(check.stderr, /design differs from its preregistered snapshot/);
+});
+
+test('results.branch accepts only the three preregistered branches', (t) => {
+  const experiment = baseExperiment();
+  experiment.results.branch = 'mostly-success';
+  const { ventureDir } = createFixture(t, experiment);
+
+  const check = runScript('check-experiment-consistency.mjs', ventureDir);
+  assert.notEqual(check.status, 0);
+  assert.match(check.stderr, /branch/);
 });
 
 test('running experiment without preregistration is rejected', (t) => {

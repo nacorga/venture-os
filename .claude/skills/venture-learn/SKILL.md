@@ -18,6 +18,8 @@ Persist a learning note under `learning/` that separates:
 - assumptions strengthened or weakened;
 - experiment limitations.
 
+Classify the result against the locked `preregistration.design.signals`: set `results.branch` to `success`, `failure` or `ambiguous`, and quote in the learning note the preregistered signal the observations meet. Classify from the observations, not from the decision you expect to make; when they meet signals of more than one branch, say so and choose the branch the signals themselves rank first, never the more convenient one.
+
 Create stable first-party evidence IDs for material observations.
 
 Update the venture state without deleting contrary evidence.
