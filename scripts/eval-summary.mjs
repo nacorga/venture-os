@@ -5,9 +5,10 @@ import { looksForked, readForkKey } from './reveal-utils.mjs';
 import { parseYamlSource } from './venture-utils.mjs';
 
 // One read-out across frozen runs: judged scores with their spread between
-// judges, mechanical verdicts on forks, pair verdicts, blind comparisons and
-// fact-sheet alarms. Evaluator-side; it reads each run's scores/, metadata,
-// marker and latest decision, and the sealed fork keys beside the runs.
+// judges, mechanical verdicts on forks, pair verdicts, blind comparisons,
+// session telemetry and fact-sheet alarms. Evaluator-side; it reads each run's
+// scores/, telemetry, metadata, marker and latest decision, and the sealed fork
+// keys beside the runs.
 
 let args;
 try {
@@ -44,6 +45,12 @@ export function parseScoreBlock(source) {
   const { scores } = parsed.value;
   if (!scores || typeof scores !== 'object' || Array.isArray(scores)) return null;
   return parsed.value;
+}
+
+function telemetryFiles(dir) {
+  return fs.existsSync(dir)
+    ? fs.readdirSync(dir).filter((name) => name.endsWith('.telemetry.json')).map((name) => readJson(path.join(dir, name))).filter(Boolean)
+    : [];
 }
 
 function short(sha) {
@@ -168,6 +175,36 @@ else {
     const overall = result.runs.map((run) => `${run} (${short(result.framework_sha256[run])}) ${result.overall[run]}`).join(' · ');
     out(`| ${result.id} | ${result.case} | ${result.same_framework ? 'yes' : 'no'} | ${result.judgments.length} | ${overall} · tie ${result.overall.tie} |`);
   }
+}
+
+out();
+out('## Sessions');
+out();
+// Written by scripts/eval-batch.mjs; a run without it was produced by hand,
+// under whatever configuration that machine's Claude Code had.
+const sessions = runs.map((run) => ({ run, telemetry: readJson(path.join(run.dir, 'telemetry.json')) })).filter(({ telemetry }) => telemetry);
+if (!sessions.length) out('No session telemetry: every run here was produced by hand.');
+else {
+  out('| Run | Skill | Model | Effort | Minutes | Cost (USD, list) | Permission denials |');
+  out('| --- | --- | --- | --- | --- | --- | --- |');
+  for (const { run, telemetry } of sessions) {
+    const cost = typeof telemetry.total_cost_usd === 'number' ? telemetry.total_cost_usd.toFixed(2) : '?';
+    out(`| ${run.name} | ${String(telemetry.prompt).split(' ')[0]} | ${telemetry.model ?? '?'} | ${telemetry.requested?.effort ?? '?'} | ${typeof telemetry.wall_seconds === 'number' ? (telemetry.wall_seconds / 60).toFixed(1) : '?'} | ${cost} | ${telemetry.permission_denials?.length ?? '?'} |`);
+  }
+  const byHand = runs.length - sessions.length;
+  if (byHand) out(`\n${byHand} run(s) without telemetry were produced by hand.`);
+  const configurations = new Set(sessions.map(({ telemetry }) => JSON.stringify(telemetry.configuration)));
+  if (configurations.size > 1) out(`\nThese sessions ran under ${configurations.size} different configurations: compare runs only within one.`);
+}
+const judgeTelemetry = [
+  ...runs.flatMap((run) => telemetryFiles(path.join(run.dir, 'scores'))),
+  ...(fs.existsSync(compareDir) ? fs.readdirSync(compareDir).filter((name) => !name.startsWith('.')) : [])
+    .filter((name) => !args.values.case || readJson(path.join(compareDir, name, 'manifest.json'))?.case === args.values.case)
+    .flatMap((name) => telemetryFiles(path.join(compareDir, name, 'judgments'))),
+];
+if (judgeTelemetry.length) {
+  const judgeCost = judgeTelemetry.reduce((sum, telemetry) => sum + (typeof telemetry.total_cost_usd === 'number' ? telemetry.total_cost_usd : 0), 0);
+  out(`\n${judgeTelemetry.length} judge session(s), ${judgeCost.toFixed(2)} USD at list price.`);
 }
 
 out();

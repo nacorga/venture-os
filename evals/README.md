@@ -6,13 +6,14 @@ All public inputs committed to this repository must be synthetic, generic, and s
 
 ## Isolation model
 
-Evaluation uses four distinct artifact classes:
+Evaluation keeps these artifacts apart:
 
 - `cases/<case-id>/case.yaml` — canonical public input visible to the run;
 - `evals/reference/<case-id>.yaml` — evaluator-only expectations, forbidden during the run;
 - `evals/runs/<run-id>/` — record of one execution;
 - `evals/runs/<run-id>/evaluator/` — evaluator reference, rubric and scoring contract copied **only when the run is frozen**;
-- `evals/runs/<run-id>/scores/<judge-label>.md` — one file per independent judge, written after freeze.
+- `evals/runs/<run-id>/scores/<judge-label>.md` — one file per independent judge, written after freeze;
+- `evals/runs/<run-id>/telemetry.json` — how the unattended session that produced the run was configured, what it cost and what it was denied, sealed by freeze; a judge's own sits beside its score as `<judge-label>.telemetry.json` (§ Unattended sessions).
 
 The Case Library is broader than the benchmark suite. A case only becomes part of the scored regression suite when a maintainer adds a matching evaluator reference under `evals/reference/`.
 
@@ -75,6 +76,26 @@ Freeze performs semantic validation before creating the immutable marker and eva
 
 Each judge writes `scores/<judge-label>.md`, ending in the machine-readable block the frozen rubric defines, and does not read another judge's score until its own is drafted. Two judges on the same run are what make a disagreement visible; one judge's total is not evidence of anything. Scoring reads only the frozen evaluator bundle for that run. It must not silently substitute the repository's current reference or current rubric.
 
+### Unattended sessions
+
+Steps 2 and 4, a fork's second phase and a blind comparison's judges can also run with no one at the keyboard. Creating runs, forks and comparisons, verdicts and unblinding stay the commands above.
+
+```bash
+node scripts/eval-batch.mjs run <run-id|fork-id>... --model <model> --effort <level> [--suite <path>] [--jobs <n>]
+node scripts/eval-batch.mjs score <judge-label> <run-id>... --model <model> --effort <level> [--jobs <n>]
+node scripts/eval-batch.mjs compare <judge-label> <compare-id>... --model <model> --effort <level> [--jobs <n>]
+```
+
+Each session is a fresh `claude -p` process started from this checkout. It loads this project's settings, skills, agents and `CLAUDE.md` and nothing else: not the operator's `CLAUDE.md` or rules, a `CLAUDE.local.md`, a `CLAUDE.md` in a directory above the checkout, plugins, MCP servers or auto-memory — all of which a session opened by hand loads and no hash records. A session that did not load every project skill and agent, or loaded a plugin or an MCP server, is stopped as soon as it reports its configuration.
+
+Sessions run in `dontAsk` mode with a fixed list of tools per kind of session, `allowedTools` in the script: a call outside the list is denied and recorded, never approved, and only the CLI's built-in read-only commands pass unlisted. A run may run `evidence:check` and `experiment:lock` and none of the evaluator's scripts. A judge may run only `eval:verify` and `eval:verdict --facts-only`, and is not started on a run whose `scores/` already holds a verdict — judge a run before running `eval:verdict` on it. A comparison judge runs no script. A judge that changes any file beside its own and the fact sheet — another judge's score, a verdict, the artifacts under comparison — fails. Two runs are comparable when they ran under the same list, not when neither was ever denied.
+
+`run` starts `/eval-run`, or `/eval-continue` for a fork, then freezes and verifies the run once its session completes. `score` and `compare` run one judge label over each target. Nothing starts unless every session in the batch can: before any session starts, every run is checked for what freeze would later refuse and a session cannot change — its case, its runtime and evaluator sources, a reserved entry, a fork's parent. A run is only started from what `eval:new` or `eval:fork` left and is never resumed: a session that ran, here or by hand, leaves partial state a second session would read, so the run is replaced by a new one.
+
+Every session writes telemetry when it starts and completes it when it ends — `telemetry.json` in the run, sealed by freeze, and `<judge-label>.telemetry.json` beside a judge's file. It records the configuration above, the model and effort requested, the model the CLI reported, its version, turns, wall time, the cost at list price with usage per model, and every permission denial. A session that was interrupted, or that froze its own run, leaves the record it started with. The runner is not part of the hashed runtime and has no npm alias: `package.json` is hashed, and the tool that runs a framework must not change that framework's hash. Its configuration is recorded run by run instead, and `eval:summary` says when the runs it reads were produced under more than one.
+
+Sessions run one at a time unless `--jobs` says otherwise; parallel sessions share one account's rate limits.
+
 ### Low-level primitives
 
 ```bash
@@ -87,6 +108,7 @@ npm run eval:verdict -- <run-id> [--facts-only]
 npm run eval:compare -- <run-a> <run-b>
 npm run eval:compare -- --unblind <compare-id>
 npm run eval:summary -- [--runs <dir>] [--compare <dir>] [--case <id>]
+node scripts/eval-batch.mjs <run|score|compare> ... --model <model> --effort <level>
 ```
 
 These are implementation primitives, not a second human workflow to memorize.
@@ -169,13 +191,13 @@ npm run eval:compare -- --unblind <compare-id>
 
 Comparing two runs of the same framework (an A/A comparison) is how the noise of the comparison itself is measured: preferences that split one way across A/A pairs as often as across A/B pairs are noise.
 
-`npm run eval:summary` reads everything above across frozen runs — judged items with their spread, mechanical verdicts, pair verdicts, unblinded comparisons and fact-sheet alarms — and prints one report. `--runs` and `--compare` point it at an archive, such as a private suite's.
+`npm run eval:summary` reads everything above across frozen runs — judged items with their spread, mechanical verdicts, pair verdicts, unblinded comparisons, session telemetry and fact-sheet alarms — and prints one report. `--runs` and `--compare` point it at an archive, such as a private suite's.
 
 ## Private benchmark boundary
 
 Do not commit real venture names, customer information, proprietary research, private outcomes, or evaluator references derived from sensitive projects here. Keep those benchmarks outside this repository and run them against a pinned Venture OS commit or recorded effective runtime hash.
 
-A private suite is a directory laid out like this repository — `cases/<id>/case.yaml` and `evals/reference/<id>.yaml`. Pass it to `/eval-new` and `/eval-freeze` with `--suite <path>`. Runs are still written under this checkout's `evals/runs/`, which is gitignored, and belong back in the suite's own storage once scored. Only the suite's directory name reaches the run, because the agent under test reads `metadata.json`.
+A private suite is a directory laid out like this repository — `cases/<id>/case.yaml` and `evals/reference/<id>.yaml`. Pass it to `/eval-new`, `/eval-freeze` and `eval-batch.mjs run` with `--suite <path>`. Runs are still written under this checkout's `evals/runs/`, which is gitignored, and belong back in the suite's own storage once scored. Only the suite's directory name reaches the run, because the agent under test reads `metadata.json`.
 
 This gives the project three useful layers:
 
