@@ -157,11 +157,12 @@ if (fs.existsSync(nvmrcPath) && fs.readFileSync(nvmrcPath, 'utf8').trim() !== '2
 const workflowPath = path.join(root, '.github', 'workflows', 'validate.yml');
 if (fs.existsSync(workflowPath)) {
   const workflow = fs.readFileSync(workflowPath, 'utf8');
-  if (!workflow.includes('workflow_dispatch:')) fail('Validate workflow must support explicit release-branch validation');
-  if (!workflow.includes('paths-ignore:')) fail('Validate workflow must avoid duplicate runs for package-only version pull requests');
-  for (const packageFile of ['- package.json', '- package-lock.json']) {
-    if (!workflow.includes(packageFile)) fail(`Validate workflow must ignore package-only release PR path: ${packageFile}`);
-  }
+  if (!workflow.includes('workflow_dispatch:')) fail('Validate workflow must support a manual run');
+  // A pull request's required check is satisfied only by a run of the
+  // pull_request event. A dispatched run on the same commit is not counted, so
+  // skipping package-only pull requests left every version pull request
+  // blocked on a check that never arrived.
+  if (workflow.includes('paths-ignore:')) fail('Validate workflow must run on every pull request, version pull requests included');
   if (!workflow.includes('persist-credentials: false')) fail('Validate workflow must not persist Git credentials');
   for (const pinnedAction of [
     'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7',
@@ -190,7 +191,6 @@ if (fs.existsSync(prepareReleaseWorkflowPath)) {
     'contents: read',
     'contents: write',
     'pull-requests: write',
-    'actions: write',
     'group: release',
     "github.ref != 'refs/heads/main'",
     'fetch-depth: 0',
@@ -208,14 +208,14 @@ if (fs.existsSync(prepareReleaseWorkflowPath)) {
     'npm version "$VERSION_TYPE" --no-git-tag-version --ignore-scripts',
     'BRANCH="release/v${VERSION}"',
     'gh pr create',
-    'gh workflow run validate.yml',
+    'Approve and run workflows',
     '## Next step',
     'No second manual workflow run is needed',
   ];
   for (const fragment of requiredFragments) {
     if (!workflow.includes(fragment)) fail(`Prepare release workflow missing required control: ${fragment}`);
   }
-  for (const forbiddenFragment of ['npm publish', 'packages: write', 'id-token: write', 'skip_tests', 'git push origin main', 'gh release create']) {
+  for (const forbiddenFragment of ['npm publish', 'packages: write', 'id-token: write', 'skip_tests', 'git push origin main', 'gh release create', 'gh workflow run validate.yml', 'actions: write']) {
     if (workflow.includes(forbiddenFragment)) fail(`Prepare release workflow must not contain: ${forbiddenFragment}`);
   }
 }
