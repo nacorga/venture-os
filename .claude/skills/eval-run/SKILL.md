@@ -37,19 +37,20 @@ During this skill:
 4. Apply `venture-research` against the critical assumptions.
 5. Apply `venture-challenge` adversarially.
 6. Apply `venture-decide` and persist the gate decision.
-7. Create `<run-dir>/RESULT.md` as a projection of canonical `venture.yaml`, not as a second independently authored state. Include:
+7. If the decision's `next_action` is an experiment (`type: experiment`), apply `venture-experiment` for the assumption it targets and run `npm run experiment:lock -- <path-to-experiment.yaml>`. Leave the experiment `designed`: the run ends before anything is executed. Freeze refuses a run whose decision chose an experiment that was never designed and locked with routed success and failure outcomes, because a later result could not be checked against it.
+8. Create `<run-dir>/RESULT.md` as a projection of canonical `venture.yaml`, not as a second independently authored state. Include:
    - gate outcome;
    - critical assumptions identified;
    - strongest supporting evidence;
    - strongest contradictory evidence;
    - blocking uncertainties;
-   - canonical next action copied without paraphrase;
+   - the decision-time next action from `latest_decision.snapshot`, copied without paraphrase; when step 7 has since replaced the current `next_action`, name that current action separately and say it executes the snapshot's decision;
    - do-not-build items referenced by `DNB###` ID;
    - revisit triggers referenced by `T###` ID when applicable;
    - concise retrospective on where confidence remains weak.
-8. Include the same immutable projection shape used by `templates/decision.md`: `decision_id`, `outcome`, and the full `latest_decision.snapshot`. Copy the snapshot exactly; do not reconstruct it from current operational fields.
-9. Run `npm run evidence:check -- <run-dir>/venture` after `RESULT.md` exists so projection drift is caught before freeze.
-10. Do not score the run and do not read evaluator references.
+9. Include the same immutable projection shape used by `templates/decision.md`: `decision_id`, `outcome`, and the full `latest_decision.snapshot`. Copy the snapshot exactly; do not reconstruct it from current operational fields.
+10. Run `npm run evidence:check -- <run-dir>/venture` after `RESULT.md` exists so projection drift is caught before freeze.
+11. Do not score the run and do not read evaluator references.
 
 ## Completion criteria
 

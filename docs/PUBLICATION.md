@@ -24,7 +24,7 @@ The first public release (`v0.1.0`) was created from a sanitized root history. T
 - private benchmark references derived from real projects;
 - credentials, tokens, private URLs, or personal data.
 
-Private benchmarks should remain in a separate repository or storage boundary and run against a pinned public Venture OS commit. They are holdouts and should not be visible to the agent during public benchmark development.
+Private benchmarks should remain in a separate repository or storage boundary and run against a pinned public Venture OS commit. They are holdouts and should not be visible to the agent during public benchmark development. The harness reads them from outside the tree with `--suite <path>` (see `evals/README.md` § Private benchmark boundary), so nothing private is copied into this repository to run them.
 
 ## Ongoing publication rule
 

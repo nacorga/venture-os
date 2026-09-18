@@ -32,6 +32,7 @@ const expected = [
   'templates',
   'evals',
   'evals/reference',
+  'evals/RUBRIC.md',
   'cases',
   'cases/README.md',
   'docs/WORKFLOWS.md',
@@ -44,6 +45,7 @@ const expected = [
   'scripts/case-utils.mjs',
   'scripts/new-case.mjs',
   'scripts/validate-case.mjs',
+  'scripts/eval-suite.mjs',
   'test/contracts.test.mjs'
 ];
 for (const p of expected) if (!fs.existsSync(path.join(root, p))) fail(`Missing ${p}`);
@@ -343,13 +345,18 @@ for (const skillName of ventureSkills) {
   if (!text.includes('$ARGUMENTS')) fail(`${skillName} must consume the venture-dir argument`);
 }
 
+const suiteResolver = path.join(root, 'scripts', 'eval-suite.mjs');
+if (fs.existsSync(suiteResolver) && !fs.readFileSync(suiteResolver, 'utf8').includes("from './case-utils.mjs'")) {
+  fail('eval-suite.mjs must validate eval inputs through Case Library utilities');
+}
+
 const evalGenerator = path.join(root, 'scripts', 'new-eval-run.mjs');
 if (fs.existsSync(evalGenerator)) {
   const text = fs.readFileSync(evalGenerator, 'utf8');
   for (const command of ['/eval-run ${runId}', '/eval-freeze ${runId}', '/eval-score ${runId}']) {
     if (!text.includes(command)) fail(`new-eval-run.mjs missing canonical command: ${command}`);
   }
-  if (!text.includes("from './case-utils.mjs'")) fail('new-eval-run.mjs must source eval inputs through Case Library utilities');
+  if (!text.includes("from './eval-suite.mjs'")) fail('new-eval-run.mjs must source eval inputs through the suite resolver');
   if (!text.includes('caseResult.value.statement')) fail('new-eval-run.mjs must use canonical case statement as eval seed');
   if (text.includes('evals/golden')) fail('new-eval-run.mjs must not read deprecated evals/golden inputs');
   if (text.includes('Use the eval-run skill for')) {

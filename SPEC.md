@@ -199,7 +199,7 @@ The regression suite should measure whether Venture OS:
 - produces auditable gate decisions;
 - changes analysis when contradictory evidence appears.
 
-Run and score evals in isolated fresh sessions. Real or sensitive holdout benchmarks stay outside the public repository and run against a pinned public commit.
+The rubric itself lives in `evals/RUBRIC.md`. Run and score evals in isolated fresh sessions, one per judge. Real or sensitive holdout benchmarks stay outside the public repository, are passed to the harness with `--suite <path>`, and run against a pinned public commit.
 
 ## 11. v0.1 success criteria
 

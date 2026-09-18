@@ -96,7 +96,7 @@ Benchmark inputs come from canonical Case Library entries under `cases/<case-id>
 /eval-new inventory-monitoring-saas claude-opus-5
 ```
 
-Creation records the effective framework hash, case hash, git state, model label and evaluator-source hashes without exposing evaluator content to the run. Copy only the generated run ID.
+Creation records the effective framework hash, case hash, git state, model label and evaluator-source hashes without exposing evaluator content to the run. Copy only the generated run ID. A private holdout adds `--suite <path>` here and at freeze; see `evals/README.md` § Private benchmark boundary.
 
 ### Session B — isolated run
 
@@ -112,17 +112,17 @@ When it finishes:
 /eval-freeze <run-id>
 ```
 
-Freeze requires a schema-valid venture, a complete gate decision, a passing integrity check, and the same effective runtime/evaluator basis recorded at creation. Only after those checks pass is the evaluator bundle copied under the frozen run.
+Freeze requires a schema-valid venture, a complete gate decision, a passing integrity check, and the same effective runtime/evaluator basis recorded at creation. When the decision chose an experiment, that experiment must be designed and locked with routed success and failure outcomes. Only after those checks pass is the evaluator bundle copied under the frozen run.
 
-### Session C — score
+### Session C — score, once per judge
 
-Open another fresh Claude Code session:
+Open another fresh Claude Code session for each judge:
 
 ```text
-/eval-score <run-id>
+/eval-score <run-id> <judge-label>
 ```
 
-Scoring uses the frozen `evaluator/` bundle, never the repository's live reference/rubric as a silent substitute.
+Each judge writes `scores/<judge-label>.md`. Scoring uses the frozen `evaluator/` bundle, never the repository's live reference/rubric as a silent substitute.
 
 Fresh-session boundaries are part of the evaluation design, not optional ceremony.
 
@@ -139,8 +139,8 @@ npm run evidence:check -- <venture-dir>
 npm run experiment:lock -- <experiment-dir|experiment.yaml>
 npm run case:new -- <id> "<title>" "<statement>" <category>
 npm run case:validate -- [<case-id|path>]
-npm run eval:new -- <case> <model-label>
-npm run eval:freeze -- <run-id>
+npm run eval:new -- <case> <model-label> [--suite <path>]
+npm run eval:freeze -- <run-id> [--suite <path>]
 npm run eval:verify -- <run-id>
 npm run repo:check
 ```
