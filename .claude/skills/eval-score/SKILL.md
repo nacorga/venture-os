@@ -29,7 +29,7 @@ Scoring evaluates Venture OS behavior, not whether the venture itself is attract
 
 Run this skill in a fresh Claude Code session that did not author the run artifacts.
 
-Every other file in `<run-dir>/scores/`, and a legacy `<run-dir>/SCORE.md`, is another judge's score, not input to this one. **Do not open or list their contents until this score has been fully drafted from frozen artifacts plus the frozen evaluator bundle.** Only then may you compare them for disagreement analysis.
+Every other `.md` file in `<run-dir>/scores/`, and a legacy `<run-dir>/SCORE.md`, is another judge's score, not input to this one. **Do not open or list their contents until this score has been fully drafted from frozen artifacts plus the frozen evaluator bundle.** Only then may you compare them for disagreement analysis.
 
 If you know the current session authored the run, stop and tell the user to open a fresh session. If session provenance is uncertain, disclose that limitation in evaluator confidence rather than silently assuming independence.
 
@@ -61,18 +61,15 @@ Read `<run-dir>/evaluator/reference.yaml` only after the run integrity check suc
 
 ## Scoring
 
-Score each common behavior from the frozen rubric from 0–2. The current canonical behaviors are:
+Score against the frozen rubric, `<run-dir>/evaluator/rubric.md`. It says which behaviors are judged, which are checked by script instead, and the output block every score carries. Do not score from memory of an earlier rubric: a run frozen under rubric 1 is scored under rubric 1.
 
-1. critical uncertainties identified;
-2. major alternatives discovered;
-3. facts separated from assumptions;
-4. disconfirming evidence sought;
-5. weak market-size proxies avoided;
-6. premature product scope avoided;
-7. cheap experiment proposed when appropriate;
-8. uncertainty preserved rather than fabricated;
-9. gate decision auditable;
-10. contradictory evidence changes the analysis appropriately.
+Before scoring, build the run's fact sheet without looking at any verdict:
+
+```bash
+npm run eval:verdict -- $0 --facts-only
+```
+
+It writes `<run-dir>/scores/facts.json` and prints nothing about verdicts. Read that file and cite its counts rather than recounting. **Never open `scores/mechanical.json` or `scores/pairs.json`** before this score is fixed: knowing whether a run passed its mechanical checks biases how its prose reads.
 
 Then assess frozen reference coverage separately:
 
@@ -87,8 +84,8 @@ Do not force semantic exact-match. A differently worded or stronger discovery co
 
 Write `<score-file>` with:
 
-- behavior score out of 20;
-- per-item rationale with evidence from frozen artifacts;
+- the output block the frozen rubric defines, when it defines one — otherwise the behavior score in the form that rubric uses;
+- per-item rationale with evidence from frozen artifacts, and for every 2, what you checked and did not find;
 - reference coverage;
 - regressions or failure modes;
 - novel useful discoveries;

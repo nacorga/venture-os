@@ -17,6 +17,8 @@
     "eval:freeze": "node scripts/freeze-eval-run.mjs",
     "eval:fork": "node scripts/fork-eval-run.mjs",
     "eval:verdict": "node scripts/eval-verdict.mjs",
+    "eval:compare": "node scripts/eval-compare.mjs",
+    "eval:summary": "node scripts/eval-summary.mjs",
     "eval:verify": "node scripts/verify-eval-run.mjs",
     "case:new": "node scripts/new-case.mjs",
     "case:validate": "node scripts/validate-case.mjs",

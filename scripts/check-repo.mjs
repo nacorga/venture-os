@@ -50,6 +50,8 @@ const expected = [
   'scripts/fork-eval-run.mjs',
   'scripts/reveal-utils.mjs',
   'scripts/eval-verdict.mjs',
+  'scripts/eval-compare.mjs',
+  'scripts/eval-summary.mjs',
   'evals/schemas/reveal-pair.schema.json',
   'test/contracts.test.mjs'
 ];
@@ -336,7 +338,7 @@ if (fs.existsSync(agentsDir)) {
   }
 }
 
-const manualEvalSkills = ['eval-new', 'eval-run', 'eval-freeze', 'eval-continue', 'eval-score'];
+const manualEvalSkills = ['eval-new', 'eval-run', 'eval-freeze', 'eval-continue', 'eval-score', 'eval-compare'];
 for (const requiredSkill of manualEvalSkills) {
   const skillPath = path.join(skillsDir, requiredSkill, 'SKILL.md');
   if (!fs.existsSync(skillPath)) {

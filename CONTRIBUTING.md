@@ -102,6 +102,8 @@ Explain briefly why the case adds useful coverage and disclose whether it is syn
 
 Changes to agents, skills, gates, evidence rules, schemas, or scoring have a higher regression risk than adding a case. Keep those changes separate from case contributions and explain the behavioral reason for the change.
 
+A framework change follows the regression protocol in [`evals/README.md`](evals/README.md) § Regression protocol: it names the run and failure that motivated it, shows that the originating case no longer exhibits it, and shows that no other case got worse in blind comparison or mechanical verdicts.
+
 ## License
 
 By contributing, you agree that your contribution is licensed under the repository's MIT License.

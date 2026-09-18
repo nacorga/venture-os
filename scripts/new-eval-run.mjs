@@ -52,6 +52,10 @@ const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/,
 const runId = `${stamp}-${caseName}-${modelLabel}`;
 const runDir = path.join(root, 'evals', 'runs', runId);
 const ventureDir = path.join(runDir, 'venture');
+if (fs.existsSync(runDir)) {
+  console.error(`Eval run already exists: ${runId}. Run IDs have one-second resolution; wait a second or use another model label.`);
+  process.exit(1);
+}
 
 for (const sub of ['research', 'decisions', 'experiments', 'learning']) {
   fs.mkdirSync(path.join(ventureDir, sub), { recursive: true });
