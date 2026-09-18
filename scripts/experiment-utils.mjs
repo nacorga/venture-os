@@ -43,9 +43,10 @@ export function listExperimentFiles(ventureDir) {
   return files.sort();
 }
 
-// Locked experiments whose primary assumption is the given one, in any status
-// but cancelled. A decision snapshot names the assumption its experiment tests,
-// not the experiment: the experiment is designed after the decision.
+// Locked experiments on the given assumption that have not run yet (designed or
+// running). A decision snapshot names the assumption its experiment tests, not
+// the experiment: the experiment is designed after the decision, and one that
+// already completed answers an earlier decision, not this one.
 export function findLockedExperimentsFor(ventureDir, assumptionId) {
   const found = [];
   for (const filePath of listExperimentFiles(ventureDir)) {
@@ -53,7 +54,7 @@ export function findLockedExperimentsFor(ventureDir, assumptionId) {
     if (!result.valid) continue;
     const experiment = result.value;
     if (experiment.primary_assumption_id !== assumptionId) continue;
-    if (experiment.status === 'cancelled' || !experiment.preregistration?.locked_at) continue;
+    if (!['designed', 'running'].includes(experiment.status) || !experiment.preregistration?.locked_at) continue;
     found.push({ filePath, experiment });
   }
   return found;
