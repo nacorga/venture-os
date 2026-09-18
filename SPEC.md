@@ -199,7 +199,7 @@ The regression suite judges whether Venture OS:
 
 It checks by script, rather than judging, that gate decisions are auditable and that contradictory evidence changes the analysis. Judged totals are a floor alarm; mechanical verdicts, blind pairwise comparison and the spread between independent judges are what compare two versions of Venture OS.
 
-The rubric itself lives in `evals/RUBRIC.md`. Whether contradictory evidence changes the analysis is measured directly rather than judged: a frozen run can be forked, shown evidence it never saw, and its second decision checked by script against its own preregistration or against a planted reveal pair. Run and score evals in isolated fresh sessions, one per judge. Real or sensitive holdout benchmarks stay outside the public repository, are passed to the harness with `--suite <path>`, and run against a pinned public commit.
+The rubric itself lives in `evals/RUBRIC.md`. Whether contradictory evidence changes the analysis is measured directly rather than judged: a frozen run can be forked, shown evidence it never saw, and its second decision checked by script against its own preregistration or against a planted reveal pair. Run and score evals in isolated fresh sessions, one per judge — by hand, or unattended through `scripts/eval-batch.mjs`, which fixes each session's configuration and records it with the session's cost — in a run, sealed by freeze. Real or sensitive holdout benchmarks stay outside the public repository, are passed to the harness with `--suite <path>`, and run against a pinned public commit.
 
 ## 11. v0.1 success criteria
 

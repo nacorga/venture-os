@@ -121,7 +121,7 @@ Public benchmark inputs come from the Case Library. Maintainer-owned evaluator e
 /eval-new inventory-monitoring-saas claude-opus-5
 ```
 
-The eval workflow preserves fresh-session boundaries through run, freeze, and score, and each run can be scored by several independent judges. Real or sensitive benchmarks belong outside this repository, are passed in with `--suite <path>`, and should be executed against a pinned public commit.
+The eval workflow preserves fresh-session boundaries through run, freeze, and score, and each run can be scored by several independent judges. Sessions run by hand or unattended; an unattended session runs in a fresh process under a fixed configuration and records it in the run. Real or sensitive benchmarks belong outside this repository, are passed in with `--suite <path>`, and should be executed against a pinned public commit.
 
 See [`evals/README.md`](evals/README.md) and [`docs/PUBLICATION.md`](docs/PUBLICATION.md).
 
