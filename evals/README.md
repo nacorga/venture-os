@@ -82,6 +82,8 @@ npm run eval:new -- <case> <model-label> [--suite <path>]
 npm run evidence:check -- evals/runs/<run-id>/venture
 npm run eval:freeze -- <run-id> [--suite <path>]
 npm run eval:verify -- <run-id>
+npm run eval:fork -- <run-id> --arm <arm> [--rep <n>] [--suite <path>] [--cross-framework]
+npm run eval:verdict -- <run-id>
 ```
 
 These are implementation primitives, not a second human workflow to memorize.
@@ -108,7 +110,29 @@ A methodology that only works for one business model is not yet a general Ventur
 
 First-decision benchmarks are necessary but not sufficient. The deterministic suite also exercises a sequential integrity cycle: an initial decision is preserved, contradictory evidence arrives, operational state advances through learning, and a second decision is recorded without rewriting the first snapshot.
 
-This catches history-preservation and state-transition regressions. A future model-level benchmark should extend the public scored suite with staged evidence reveals so behavior 10 is measured directly rather than inferred from a single decision.
+This catches history-preservation and state-transition regressions. What it cannot catch is a model that records the second decision correctly and makes it badly — that is what staged reveals measure.
+
+### Staged evidence reveal
+
+A frozen run can be **forked**: the fork copies its venture state and first decision, is shown one packet of evidence the first phase never saw, and must make a second decision. Whether that decision was the right one is then checked by a script, not by a judge.
+
+```bash
+npm run eval:fork -- <run-id> --arm <arm> [--rep <n>] [--suite <path>] [--cross-framework]
+```
+
+Two kinds of arm:
+
+- **`prereg-failure` and `prereg-success`** reveal the results of the run's own locked experiment: the branch's preregistered signals were met, the others were not, plus one fixed distraction that pulls the other way. The packet is built from the locked design, with no model involved. The verdict checks that the run classified the branch it was shown, that its second decision is the outcome its own locked rule assigns to that branch, and that the decision file records the routing.
+- **`P###-a` and `P###-b`** reveal a planted **reveal pair** from `evals/reference/reveal/<case>/P###.yaml`: two arms identical but for one decisive fact. The pair file also carries evaluator-only expectations — which outcomes each arm may or may not end in, which arm must end higher (`PARK` < `TEST` < `PROCEED`), and **traps**: packet items whose evidence must not be recorded above a strength, or must carry a derivation, each naming the real failure it was written from. Only an arm's summary and items reach the run; the file is copied into the fork's `evaluator/` only at freeze.
+
+Each fork is its own run, named `<run-id>--<arm>--r<n>`. It continues in a fresh session with `/eval-continue <fork-id>`, is frozen with `/eval-freeze` — which also refuses a fork whose phase-1 decisions, phase-1 result, packet or preregistration changed, that made no new decision, or that left a packet item uncited — and is judged with:
+
+```bash
+npm run eval:verdict -- <fork-id>     # scores/mechanical.json
+npm run eval:verdict -- <run-id>      # scores/pairs.json: ordered, tied or inverted
+```
+
+A tied pair does not fail; it says the pair did not discriminate. An inverted pair fails. `--cross-framework` forks a run frozen on one framework into a second phase on another, which is the lowest-noise way to test a change to how Venture OS decides: both versions start from the same phase-1 state. Pair verdicts never mix frameworks.
 
 ## Private benchmark boundary
 

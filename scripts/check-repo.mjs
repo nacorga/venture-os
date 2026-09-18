@@ -3,6 +3,7 @@ import path from 'node:path';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 import { listCaseFiles, validateCaseFile } from './case-utils.mjs';
+import { validateRevealPairFile } from './reveal-utils.mjs';
 
 const root = process.cwd();
 let errors = 0;
@@ -46,6 +47,10 @@ const expected = [
   'scripts/new-case.mjs',
   'scripts/validate-case.mjs',
   'scripts/eval-suite.mjs',
+  'scripts/fork-eval-run.mjs',
+  'scripts/reveal-utils.mjs',
+  'scripts/eval-verdict.mjs',
+  'evals/schemas/reveal-pair.schema.json',
   'test/contracts.test.mjs'
 ];
 for (const p of expected) if (!fs.existsSync(path.join(root, p))) fail(`Missing ${p}`);
@@ -283,6 +288,24 @@ if (fs.existsSync(referenceDir)) {
       fail(`Evaluator reference ${entry.name} has no canonical public case at cases/${caseId}/case.yaml`);
     }
   }
+
+  const revealDir = path.join(referenceDir, 'reveal');
+  if (fs.existsSync(revealDir)) {
+    for (const caseEntry of fs.readdirSync(revealDir, { withFileTypes: true })) {
+      if (!caseEntry.isDirectory()) {
+        fail(`evals/reference/reveal/${caseEntry.name} must be a case directory`);
+        continue;
+      }
+      if (!publicCaseIds.has(caseEntry.name)) {
+        fail(`Reveal pairs under evals/reference/reveal/${caseEntry.name} have no canonical public case`);
+      }
+      for (const pairEntry of fs.readdirSync(path.join(revealDir, caseEntry.name), { withFileTypes: true })) {
+        const pairPath = path.join(revealDir, caseEntry.name, pairEntry.name);
+        const result = validateRevealPairFile(pairPath, caseEntry.name);
+        for (const error of result.errors) fail(`evals/reference/reveal/${caseEntry.name}/${pairEntry.name} ${error}`);
+      }
+    }
+  }
 }
 
 const skillsDir = path.join(root, '.claude', 'skills');
@@ -311,7 +334,7 @@ if (fs.existsSync(agentsDir)) {
   }
 }
 
-const manualEvalSkills = ['eval-new', 'eval-run', 'eval-freeze', 'eval-score'];
+const manualEvalSkills = ['eval-new', 'eval-run', 'eval-freeze', 'eval-continue', 'eval-score'];
 for (const requiredSkill of manualEvalSkills) {
   const skillPath = path.join(skillsDir, requiredSkill, 'SKILL.md');
   if (!fs.existsSync(skillPath)) {

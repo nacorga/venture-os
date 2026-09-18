@@ -84,7 +84,7 @@ All commands must pass before opening a pull request.
 
 ## Benchmark references are maintainer-owned
 
-Do not create or modify `evals/reference/` just to contribute a case.
+Do not create or modify `evals/reference/` — including the reveal pairs under `evals/reference/reveal/` — just to contribute a case.
 
 The Case Library is broader than the regression benchmark suite. Maintainers may later add a separate evaluator reference when a case provides useful regression coverage. Keeping that decision separate prevents contributors from encoding the expected answer into the input.
 

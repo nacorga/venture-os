@@ -9,11 +9,13 @@ import {
   evaluatorSourceHashes,
   evaluatorSourcePaths,
   gitProvenance,
+  requiredEvaluatorSources,
   runDigest,
   runtimeProvenance,
   sha256File,
 } from './eval-provenance.mjs';
 import { findLockedExperimentsFor, structuredRoutingErrors } from './experiment-utils.mjs';
+import { forkIntegrityErrors } from './reveal-utils.mjs';
 import { validateVentureFile } from './venture-utils.mjs';
 
 let args;
@@ -110,7 +112,8 @@ if (currentRuntime.framework_sha256 !== metadata.provenance.framework_sha256) {
   process.exit(1);
 }
 
-const currentEvaluatorHashes = evaluatorSourceHashes(root, metadata.case, suite.referenceDir);
+const pairId = metadata.reveal?.pair_id ?? null;
+const currentEvaluatorHashes = evaluatorSourceHashes(root, metadata.case, suite.referenceDir, pairId);
 const createdEvaluatorHashes = metadata.provenance.evaluator_sources ?? {};
 for (const key of Object.keys(evaluatorBundle)) {
   if ((createdEvaluatorHashes[key] ?? null) !== (currentEvaluatorHashes[key] ?? null)) {
@@ -157,6 +160,14 @@ if (integrity.status !== 0) {
   process.exit(1);
 }
 
+if (metadata.parent) {
+  const forkErrors = forkIntegrityErrors(runDir, metadata, ventureResult.value);
+  if (forkErrors.length) {
+    for (const error of forkErrors) console.error(`Cannot freeze fork: ${error}`);
+    process.exit(1);
+  }
+}
+
 for (const reserved of ['evaluator', 'scores', 'SCORE.md']) {
   if (fs.existsSync(path.join(runDir, reserved))) {
     console.error(`Cannot freeze run: ${reserved} already exists before freeze. Evaluator inputs and scores are written only after freeze; this violates eval isolation.`);
@@ -174,10 +185,10 @@ const frozenAt = new Date().toISOString();
 const evaluatorDir = path.join(runDir, 'evaluator');
 fs.mkdirSync(evaluatorDir, { recursive: true });
 
-const evaluatorSources = evaluatorSourcePaths(root, metadata.case, suite.referenceDir);
+const evaluatorSources = evaluatorSourcePaths(root, metadata.case, suite.referenceDir, pairId);
 for (const [key, { source, file }] of Object.entries(evaluatorBundle)) {
   if (currentEvaluatorHashes[key] === null) {
-    if (key === 'reference_sha256') continue;
+    if (!requiredEvaluatorSources.includes(key)) continue;
     console.error(`Cannot freeze run: evaluator ${source} is missing.`);
     fs.rmSync(evaluatorDir, { recursive: true, force: true });
     process.exit(1);

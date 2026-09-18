@@ -73,7 +73,7 @@ Current venture skills:
 - `venture-learn`
 - `venture-status`
 
-Evaluation lifecycle skills are separate and preserve isolation boundaries between run, freeze, and score.
+Evaluation lifecycle skills are separate and preserve isolation boundaries between run, freeze, and score: `eval-new`, `eval-run`, `eval-freeze`, `eval-continue` (the second phase of a forked run) and `eval-score`.
 
 ### 4.4 Subagents
 
@@ -199,7 +199,7 @@ The regression suite should measure whether Venture OS:
 - produces auditable gate decisions;
 - changes analysis when contradictory evidence appears.
 
-The rubric itself lives in `evals/RUBRIC.md`. Run and score evals in isolated fresh sessions, one per judge. Real or sensitive holdout benchmarks stay outside the public repository, are passed to the harness with `--suite <path>`, and run against a pinned public commit.
+The rubric itself lives in `evals/RUBRIC.md`. Behavior 10 is also measured directly: a frozen run can be forked, shown evidence it never saw, and its second decision checked by script against its own preregistration or against a planted reveal pair. Run and score evals in isolated fresh sessions, one per judge. Real or sensitive holdout benchmarks stay outside the public repository, are passed to the harness with `--suite <path>`, and run against a pinned public commit.
 
 ## 11. v0.1 success criteria
 

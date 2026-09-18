@@ -224,7 +224,13 @@ cases/inventory-monitoring-saas/case.yaml
 evals/reference/inventory-monitoring-saas.yaml
 ```
 
-The active run must not read the evaluator reference. This preserves the contamination boundary established by the eval harness.
+A case may also have reveal pairs, which are evaluator material too:
+
+```text
+evals/reference/reveal/inventory-monitoring-saas/P001.yaml
+```
+
+The active run must not read the evaluator reference or its reveal pairs. This preserves the contamination boundary established by the eval harness.
 
 ## Compatibility policy
 

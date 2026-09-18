@@ -132,6 +132,7 @@ During an active eval run:
 - do not read `evals/reference/`, nor the evaluator references of an external suite;
 - do not inspect git history, previous eval outputs, or other artifacts to infer reference expectations;
 - do not read other cases for hints about desired conclusions;
+- in a forked run, do not open the parent run or any other fork of it;
 - external research is allowed and encouraged when the workflow calls for it;
 - save all findings inside the active run before scoring.
 

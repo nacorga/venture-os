@@ -148,7 +148,8 @@ Start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - `ventures/` — local venture workspaces; do not commit sensitive venture data.
 - `cases/` — public, portable Case Library inputs.
 - `evals/RUBRIC.md` — the behavior rubric judges score frozen runs against.
-- `evals/reference/` — evaluator-only expectations for the scored public regression subset.
+- `evals/reference/` — evaluator-only expectations for the scored public regression subset, including planted reveal pairs under `evals/reference/reveal/`.
+- `evals/schemas/` — the format of reveal pairs.
 - `evals/runs/` — generated benchmark executions.
 - `scripts/` — deterministic mechanics; business judgment remains with agents and humans.
 - `test/` — deterministic regression tests for repository contracts.
