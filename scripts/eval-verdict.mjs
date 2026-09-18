@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { hashPathSet, verifyFrozenRun } from './eval-provenance.mjs';
 import { decisionRuleOutcome } from './experiment-utils.mjs';
-import { evidenceCiting, gateRank } from './reveal-utils.mjs';
+import { evidenceCiting, gateRank, readForkKey } from './reveal-utils.mjs';
 import { parseYamlFile } from './venture-utils.mjs';
 
 // Mechanical verdicts on frozen runs. Evaluator-side: it reads expectations the
@@ -49,14 +49,14 @@ function writeScore(dir, file, value) {
   fs.writeFileSync(path.join(dir, 'scores', file), JSON.stringify(value, null, 2) + '\n');
 }
 
-function childVerdict(dir, metadata) {
+function childVerdict(dir, runId, key) {
   const venture = parseYamlFile(path.join(dir, 'venture', 'venture.yaml'), 'venture.yaml').value;
   const decision = venture.latest_decision;
   const checks = [];
 
-  if (metadata.reveal.kind === 'prereg') {
-    const expectedBranch = metadata.reveal.branch;
-    const experimentPath = path.join(dir, metadata.parent.preregistration.path);
+  if (key.reveal.kind === 'prereg') {
+    const expectedBranch = key.reveal.branch;
+    const experimentPath = path.join(dir, key.reveal.experiment_path);
     const experiment = parseYamlFile(experimentPath, 'experiment').value;
     const recordedBranch = experiment.results?.branch ?? null;
     checks.push({
@@ -80,7 +80,7 @@ function childVerdict(dir, metadata) {
     });
   } else {
     const pair = parseYamlFile(path.join(dir, 'evaluator', 'reveal-pair.yaml'), 'reveal pair').value;
-    const side = metadata.reveal.side;
+    const side = key.reveal.side;
     const expectation = pair.expect?.[side] ?? {};
     if (expectation.outcome_in) {
       checks.push({ check: 'outcome_in', expected: expectation.outcome_in, actual: decision.outcome, pass: expectation.outcome_in.includes(decision.outcome) });
@@ -102,36 +102,40 @@ function childVerdict(dir, metadata) {
   }
 
   return {
-    run_id: metadata.run_id,
-    parent: metadata.parent.run_id,
-    arm: metadata.reveal.arm,
-    first_decision: { id: metadata.parent.decision_id, outcome: metadata.parent.outcome },
+    run_id: runId,
+    parent: key.parent.run_id,
+    arm: key.reveal.arm,
+    first_decision: { id: key.parent.decision_id, outcome: key.parent.outcome },
     second_decision: { id: decision.id, outcome: decision.outcome },
-    cross_framework: metadata.reveal.cross_framework,
+    cross_framework: key.reveal.cross_framework,
     checks,
     pass: checks.every((item) => item.pass),
   };
 }
 
+// Forks are found through their keys, never by name: the key names its parent,
+// the exact version of the pair it was shown, and its replicate.
 function pairVerdicts(parentId) {
-  const children = fs.readdirSync(runsDir)
-    .filter((name) => name.startsWith(`${parentId}--`))
-    .map((name) => ({ name, dir: path.join(runsDir, name) }))
+  const keysDir = path.join(runsDir, '.keys');
+  const children = (fs.existsSync(keysDir) ? fs.readdirSync(keysDir) : [])
+    .filter((name) => name.endsWith('.json'))
+    .map((name) => readJson(path.join(keysDir, name)))
+    .filter((key) => key.parent?.run_id === parentId && key.reveal?.kind === 'planted')
+    .map((key) => ({ name: key.fork_id, dir: path.join(runsDir, key.fork_id), key }))
     .filter(({ dir }) => fs.existsSync(path.join(dir, 'FROZEN.json')))
-    .map(({ name, dir }) => ({ name, dir, metadata: readJson(path.join(dir, 'metadata.json')) }))
-    .filter(({ metadata }) => metadata.reveal?.kind === 'planted');
+    .map((child) => ({ ...child, framework: readJson(path.join(child.dir, 'FROZEN.json')).framework_sha256 }));
 
   const groups = new Map();
   for (const child of children) {
-    const key = `${child.metadata.reveal.pair_id}|r${child.metadata.reveal.rep}|${child.metadata.provenance.framework_sha256}`;
-    if (!groups.has(key)) groups.set(key, {});
-    groups.get(key)[child.metadata.reveal.side] = child;
+    const groupKey = [child.key.reveal.pair_id, child.key.reveal.pair_sha256, `r${child.key.reveal.rep}`, child.framework].join('|');
+    if (!groups.has(groupKey)) groups.set(groupKey, {});
+    groups.get(groupKey)[child.key.reveal.side] = child;
   }
 
   const verdicts = [];
-  for (const [key, sides] of groups) {
+  for (const [groupKey, sides] of groups) {
     if (!sides.a || !sides.b) continue;
-    const [pairId, rep] = key.split('|');
+    const [pairId, pairSha256, rep, framework] = groupKey.split('|');
     for (const side of [sides.a, sides.b]) frozenOrStop(side.dir, side.name);
     const pair = parseYamlFile(path.join(sides.a.dir, 'evaluator', 'reveal-pair.yaml'), 'reveal pair').value;
     if (!pair.expect?.order) continue;
@@ -142,8 +146,9 @@ function pairVerdicts(parentId) {
     const difference = expectedHigher === 'b' ? gateRank[b] - gateRank[a] : gateRank[a] - gateRank[b];
     verdicts.push({
       pair: pairId,
+      pair_sha256: pairSha256,
       rep,
-      framework_sha256: sides.a.metadata.provenance.framework_sha256,
+      framework_sha256: framework,
       runs: { a: sides.a.name, b: sides.b.name },
       outcomes: { a, b },
       expected: pair.expect.order,
@@ -158,10 +163,10 @@ if (!fs.existsSync(runDir)) {
   process.exit(1);
 }
 const marker = frozenOrStop(runDir, runId);
-const metadata = readJson(path.join(runDir, 'metadata.json'));
+const forkKey = readForkKey(runsDir, runId);
 
-if (metadata.parent) {
-  const verdict = { tool, frozen_sha256: marker.sha256, ...childVerdict(runDir, metadata) };
+if (forkKey) {
+  const verdict = { tool, frozen_sha256: marker.sha256, ...childVerdict(runDir, runId, forkKey) };
   writeScore(runDir, 'mechanical.json', verdict);
   for (const item of verdict.checks) console.log(`${item.pass ? 'PASS' : 'FAIL'} ${item.check}${item.item ? ` ${item.item}` : ''}`);
   console.log(`${runId}: ${verdict.pass ? 'PASS' : 'FAIL'} (${verdict.first_decision.outcome} -> ${verdict.second_decision.outcome})`);

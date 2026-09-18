@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -12,18 +13,25 @@ import {
 } from './eval-provenance.mjs';
 import { findLockedExperimentsFor, structuredRoutingErrors } from './experiment-utils.mjs';
 import {
+  forkKeyPath,
+  looksForked,
   parseArm,
   plantedPacket,
   preregPacket,
+  readForkKey,
   revealPairPath,
-  sha256Json,
   validateRevealPairFile,
 } from './reveal-utils.mjs';
 import { validateVentureFile } from './venture-utils.mjs';
 
 // A fork starts a second phase from a frozen run: the same venture state, then
-// one packet of evidence the first phase never saw. Forks of one parent share
-// their phase-1 state byte for byte, so what differs between them is the packet.
+// one packet of evidence the first phase never saw. Every fork of a parent
+// starts from the parent's phase-1 state byte for byte, and freeze checks the
+// fork against the parent again, so what differs between forks is the packet.
+//
+// The fork's ID is opaque and its arm is recorded only in a sealed key under
+// evals/runs/.keys/: the run under test must work out what its evidence says
+// without being told which branch it is in.
 
 function stop(message) {
   console.error(message);
@@ -67,7 +75,7 @@ if (!verified.ok) stop(`Cannot fork ${parentId}: it is not a verified frozen run
 const marker = verified.marker;
 
 const parentMetadata = JSON.parse(fs.readFileSync(path.join(parentDir, 'metadata.json'), 'utf8'));
-if (parentMetadata.parent) stop(`Cannot fork ${parentId}: it is itself a fork. Fork its parent instead.`);
+if (readForkKey(runsDir, parentId) || looksForked(parentDir)) stop(`Cannot fork ${parentId}: it is itself a fork. Fork its parent instead.`);
 
 const runtime = runtimeProvenance(root);
 const crossFramework = runtime.framework_sha256 !== marker.framework_sha256;
@@ -94,8 +102,7 @@ if (!parentVenture.valid) stop(`Cannot fork ${parentId}: its venture.yaml is not
 const decision = parentVenture.value.latest_decision;
 
 let packet;
-let preregistration = null;
-let pairFile = null;
+let revealSource;
 if (arm.kind === 'prereg') {
   const action = decision.snapshot.next_action;
   if (action?.type !== 'experiment') {
@@ -110,23 +117,24 @@ if (arm.kind === 'prereg') {
   }
   const { experiment, filePath } = candidates[0];
   packet = preregPacket(experiment, arm.branch);
-  preregistration = {
+  revealSource = {
+    branch: arm.branch,
     experiment_id: experiment.id,
-    path: path.relative(parentDir, filePath).replaceAll(path.sep, '/'),
-    sha256: sha256Json(experiment.preregistration),
+    experiment_path: path.relative(parentDir, filePath).replaceAll(path.sep, '/'),
   };
 } else {
-  pairFile = revealPairPath(suite.referenceDir, parentMetadata.case, arm.pairId);
+  const pairFile = revealPairPath(suite.referenceDir, parentMetadata.case, arm.pairId);
   if (!fs.existsSync(pairFile)) stop(`Cannot fork ${parentId}: no reveal pair ${arm.pairId} for case ${parentMetadata.case}.`);
   const pair = validateRevealPairFile(pairFile, parentMetadata.case);
   if (!pair.valid) stop(`Cannot fork ${parentId}: reveal pair ${arm.pairId} is invalid.\n${pair.errors.join('\n')}`);
   if (!pair.value.arms[arm.side]) stop(`Cannot fork ${parentId}: reveal pair ${arm.pairId} has no arm ${arm.side}.`);
   packet = plantedPacket(pair.value, arm.side);
+  revealSource = { pair_id: arm.pairId, side: arm.side, pair_sha256: sha256File(pairFile) };
 }
 
-const childId = `${parentId}--${args.values.arm}--r${args.values.rep}`;
+const childId = `${parentId}--${crypto.randomBytes(4).toString('hex')}`;
 const childDir = path.join(runsDir, childId);
-if (fs.existsSync(childDir)) stop(`Fork already exists: ${childId}. Use another --rep.`);
+if (fs.existsSync(childDir)) stop(`Fork ID collision: ${childId}. Run the command again.`);
 
 fs.mkdirSync(childDir, { recursive: true });
 fs.copyFileSync(path.join(parentDir, 'case.yaml'), path.join(childDir, 'case.yaml'));
@@ -136,16 +144,10 @@ fs.mkdirSync(path.join(childDir, 'reveal'));
 const packetPath = path.join(childDir, 'reveal', 'packet.yaml');
 fs.writeFileSync(packetPath, YAML.stringify(packet, { lineWidth: 0 }));
 
-const decisionsDir = path.join(childDir, 'venture', 'decisions');
-const decisionFiles = {};
-for (const name of fs.readdirSync(decisionsDir).filter((entry) => entry.endsWith('.md')).sort()) {
-  decisionFiles[`venture/decisions/${name}`] = sha256File(path.join(decisionsDir, name));
-}
-
 const git = gitProvenance(root);
 const evaluatorSources = evaluatorSourceHashes(root, parentMetadata.case, suite.referenceDir, arm.kind === 'planted' ? arm.pairId : null);
-// Scoring, verdicts and comparisons read these fields; the run itself needs
-// none of them. Expectations never enter metadata.
+// The run reads this file, so it says nothing about the reveal: not the arm,
+// not the parent's outcome, not whether it is one arm of a pair.
 const metadata = {
   run_id: childId,
   case: parentMetadata.case,
@@ -161,29 +163,34 @@ const metadata = {
     ...runtime,
     evaluator_sources: evaluatorSources,
   },
+};
+fs.writeFileSync(path.join(childDir, 'metadata.json'), JSON.stringify(metadata, null, 2) + '\n');
+
+const key = {
+  fork_id: childId,
+  case: parentMetadata.case,
+  created_at: metadata.created_at,
   parent: {
     run_id: parentId,
     frozen_sha256: marker.sha256,
     framework_sha256: marker.framework_sha256,
     decision_id: decision.id,
     outcome: decision.outcome,
-    decision_files: decisionFiles,
-    result_sha256: sha256File(path.join(childDir, 'RESULT.phase1.md')),
-    preregistration,
   },
   reveal: {
     kind: arm.kind,
     arm: args.values.arm,
-    ...(arm.kind === 'planted' ? { pair_id: arm.pairId, side: arm.side } : { branch: arm.branch }),
+    ...revealSource,
     rep: Number(args.values.rep),
     packet_sha256: sha256File(packetPath),
     cross_framework: crossFramework,
   },
 };
-fs.writeFileSync(path.join(childDir, 'metadata.json'), JSON.stringify(metadata, null, 2) + '\n');
+fs.mkdirSync(path.dirname(forkKeyPath(runsDir, childId)), { recursive: true });
+fs.writeFileSync(forkKeyPath(runsDir, childId), JSON.stringify(key, null, 2) + '\n');
 
 const suiteNote = suiteLabel ? ' --suite <path to the suite this run was created from>' : '';
-fs.writeFileSync(path.join(childDir, 'RUN.md'), `# Eval Run: ${parentMetadata.case} — second phase\n\nForked from \`${parentId}\` after ${decision.id}. The evidence revealed to this run is in \`reveal/packet.yaml\`.\n\n## Canonical workflow\n\nOperational instructions live in Claude Code skills. This file intentionally does not duplicate them.\n\n1. Start a fresh Claude Code session and run:\n\n   \`/eval-continue ${childId}\`\n\n2. When that skill completes, run:\n\n   \`/eval-freeze ${childId}${suiteNote}\`\n\n3. Then, outside any judged session:\n\n   \`npm run eval:verdict -- ${childId}\`\n\nIf any procedure differs between this file and a skill, the skill is authoritative.\n`);
+fs.writeFileSync(path.join(childDir, 'RUN.md'), `# Eval Run: ${parentMetadata.case} — second phase\n\nThis run continues from a frozen first phase. The evidence revealed to it is in \`reveal/packet.yaml\`.\n\n## Canonical workflow\n\nOperational instructions live in Claude Code skills. This file intentionally does not duplicate them.\n\n1. Start a fresh Claude Code session and run:\n\n   \`/eval-continue ${childId}\`\n\n2. When that skill completes, run:\n\n   \`/eval-freeze ${childId}${suiteNote}\`\n\n3. Then, outside any judged session:\n\n   \`npm run eval:verdict -- ${childId}\`\n\nIf any procedure differs between this file and a skill, the skill is authoritative.\n`);
 
 console.log(`Created evals/runs/${childId}`);
 console.log(`Forked from ${parentId} after ${decision.id} (${decision.outcome}); arm ${args.values.arm}.`);

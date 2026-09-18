@@ -159,7 +159,7 @@ npm run case:validate -- [<case-id|path>]
 npm run eval:new -- <case> <model-label> [--suite <path>]
 npm run eval:freeze -- <run-id> [--suite <path>]
 npm run eval:verify -- <run-id>
-npm run eval:fork -- <run-id> --arm <arm> [--rep <n>] [--suite <path>] [--cross-framework]
+npm run eval:fork -- <run-id> --arm <arm> [--rep <n>] [--suite <path>] [--model-label <label>] [--cross-framework]
 npm run eval:verdict -- <run-id>
 npm run repo:check
 ```

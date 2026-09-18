@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
-import { runDigest } from '../scripts/eval-provenance.mjs';
+import { runDigest, sha256Buffer as sha256 } from '../scripts/eval-provenance.mjs';
 
 // The staged-reveal cycle end to end, with the model's work simulated as state
 // edits: a frozen parent, a fork with a revealed packet, a second decision, a
@@ -86,9 +86,22 @@ function createSuite(t) {
   return suiteRoot;
 }
 
+const runsDir = path.join(repoRoot, 'evals', 'runs');
+
 function trackRun(t, runId) {
-  t.after(() => fs.rmSync(path.join(repoRoot, 'evals', 'runs', runId), { recursive: true, force: true }));
-  return path.join(repoRoot, 'evals', 'runs', runId);
+  t.after(() => {
+    fs.rmSync(path.join(runsDir, runId), { recursive: true, force: true });
+    fs.rmSync(path.join(runsDir, '.keys', `${runId}.json`), { force: true });
+  });
+  return path.join(runsDir, runId);
+}
+
+function readKey(runId) {
+  return JSON.parse(fs.readFileSync(path.join(runsDir, '.keys', `${runId}.json`), 'utf8'));
+}
+
+function writeKey(runId, key) {
+  fs.writeFileSync(path.join(runsDir, '.keys', `${runId}.json`), JSON.stringify(key, null, 2) + '\n');
 }
 
 const noAction = { success_signal: null, failure_signal: null, depends_on: [] };
@@ -117,8 +130,16 @@ function parentState() {
     slug: 'reveal-fixture',
     stage: 'experiment',
     thesis: { problem: 'A problem', icp: 'An ICP', solution: 'A solution', business_model: 'Subscription', distribution: 'Outreach' },
-    assumptions: [{ id: 'A001', statement: 'Buyers will pay for a pilot', category: 'willingness_to_pay', criticality: 'critical', status: 'unknown', evidence_ids: [] }],
-    evidence_index: [],
+    assumptions: [{ id: 'A001', statement: 'Buyers will pay for a pilot', category: 'willingness_to_pay', criticality: 'critical', status: 'unknown', evidence_ids: ['E001'] }],
+    evidence_index: [{
+      id: 'E001',
+      type: 'secondary_external',
+      statement: 'Comparable tools sell pilots to this buyer.',
+      source: 'https://example.com/pricing',
+      direction: 'supports',
+      strength: 'weak',
+      assumption_ids: ['A001'],
+    }],
     latest_decision: { id: 'D001', outcome: 'TEST', path: 'decisions/D001.md', snapshot },
     blocking_assumptions: ['A001'],
     blocking_deferrals: [],
@@ -158,8 +179,11 @@ function lockedExperiment() {
   };
 }
 
+let parentSequence = 0;
+
 function createFrozenParent(t, suiteRoot) {
-  const created = runScript('new-eval-run.mjs', caseId, 'test-model', '--suite', suiteRoot);
+  parentSequence += 1;
+  const created = runScript('new-eval-run.mjs', caseId, `test-model-${process.pid}-${parentSequence}`, '--suite', suiteRoot);
   assert.equal(created.status, 0, `${created.stdout}\n${created.stderr}`);
   const runId = created.stdout.match(/^Created evals\/runs\/(\S+)$/m)[1];
   const runDir = trackRun(t, runId);
@@ -167,6 +191,7 @@ function createFrozenParent(t, suiteRoot) {
   writeYaml(path.join(runDir, 'venture', 'venture.yaml'), state);
   fs.writeFileSync(path.join(runDir, 'venture', 'decisions', 'D001.md'), projection(state.latest_decision, '# Decision D001'));
   fs.writeFileSync(path.join(runDir, 'RESULT.md'), projection(state.latest_decision, '# Result'));
+  fs.writeFileSync(path.join(runDir, 'venture', 'research', 'desk.md'), '# Desk research\n\nNo buyer has been asked yet.\n');
   fs.mkdirSync(path.join(runDir, 'venture', 'experiments', 'X001-paid-pilot'), { recursive: true });
   writeYaml(path.join(runDir, 'venture', 'experiments', 'X001-paid-pilot', 'experiment.yaml'), lockedExperiment());
   const freeze = runScript('freeze-eval-run.mjs', runId, '--suite', suiteRoot);
@@ -192,12 +217,21 @@ function secondSnapshot(outcome) {
   return { ...base, next_action: { id: 'N006', type: 'positioning', assumption_id: null, instruction: 'Define positioning.', ...noAction }, blocking_assumptions: [], revisit_when: [] };
 }
 
+function experimentFileFor(runDir, experimentId) {
+  const experimentsDir = path.join(runDir, 'venture', 'experiments');
+  for (const entry of fs.readdirSync(experimentsDir)) {
+    const filePath = path.join(experimentsDir, entry, 'experiment.yaml');
+    if (fs.existsSync(filePath) && readYaml(filePath).id === experimentId) return filePath;
+  }
+  throw new Error(`no experiment ${experimentId}`);
+}
+
 // Stands in for /eval-continue: cite the packet, record results, decide again.
+// It reads only what the run under test may read.
 function continueRun(runDir, { outcome, branch = null, strength = () => 'medium', skipItem = null, routingHeading = true }) {
   const venturePath = path.join(runDir, 'venture', 'venture.yaml');
   const state = readYaml(venturePath);
   const packet = readYaml(path.join(runDir, 'reveal', 'packet.yaml'));
-  const metadata = JSON.parse(fs.readFileSync(path.join(runDir, 'metadata.json'), 'utf8'));
 
   const evidenceIds = [];
   packet.items.forEach((item, index) => {
@@ -218,7 +252,7 @@ function continueRun(runDir, { outcome, branch = null, strength = () => 'medium'
   state.assumptions[0].evidence_ids.push(...evidenceIds);
 
   if (packet.kind === 'prereg') {
-    const experimentPath = path.join(runDir, metadata.parent.preregistration.path);
+    const experimentPath = experimentFileFor(runDir, packet.experiment_id);
     const experiment = readYaml(experimentPath);
     experiment.status = 'completed';
     experiment.results = {
@@ -247,7 +281,7 @@ test('a preregistration fork reveals the run its own failure signal and is judge
 
   const child = fork(t, parent.runId, 'prereg-failure', '--suite', suiteRoot);
   assert.equal(child.result.status, 0, `${child.result.stdout}\n${child.result.stderr}`);
-  assert.equal(child.runId, `${parent.runId}--prereg-failure--r1`);
+  assert.match(child.runId, new RegExp(`^${parent.runId}--[0-9a-f]{8}$`));
   assert.equal(fs.existsSync(path.join(child.runDir, 'evaluator')), false);
   assert.equal(
     fs.readFileSync(path.join(child.runDir, 'RESULT.phase1.md'), 'utf8'),
@@ -255,12 +289,17 @@ test('a preregistration fork reveals the run its own failure signal and is judge
   );
   const packet = readYaml(path.join(child.runDir, 'reveal', 'packet.yaml'));
   assert.equal(packet.kind, 'prereg');
+  assert.equal(packet.experiment_id, 'X001');
   assert.match(packet.items.map((item) => item.text).join('\n'), /"No buyer pays the deposit"/);
   assert.match(packet.items.map((item) => item.text).join('\n'), /"At least two buyers pay the deposit"/);
-  const metadata = JSON.parse(fs.readFileSync(path.join(child.runDir, 'metadata.json'), 'utf8'));
-  assert.equal(metadata.parent.decision_id, 'D001');
-  assert.equal(metadata.reveal.branch, 'failure');
-  assert.equal(JSON.stringify(metadata).includes(suiteRoot), false);
+
+  // Nothing the run can read names its arm; the sealed key does.
+  for (const file of ['metadata.json', 'RUN.md', 'reveal/packet.yaml']) {
+    const text = fs.readFileSync(path.join(child.runDir, file), 'utf8');
+    for (const label of ['prereg-failure', 'branch', suiteRoot]) assert.equal(text.includes(label), false, `${file} carries ${label}`);
+  }
+  const key = readKey(child.runId);
+  assert.deepEqual([key.parent.run_id, key.parent.decision_id, key.reveal.arm, key.reveal.branch], [parent.runId, 'D001', 'prereg-failure', 'failure']);
 
   continueRun(child.runDir, { outcome: 'PARK', branch: 'failure' });
   const freeze = runScript('freeze-eval-run.mjs', child.runId, '--suite', suiteRoot);
@@ -288,21 +327,66 @@ test('a second decision that ignores its preregistered rule fails the verdict', 
 });
 
 for (const [name, tamper, message] of [
-  ['a phase-1 decision edited after the fork', (runDir) => fs.appendFileSync(path.join(runDir, 'venture', 'decisions', 'D001.md'), '\nedited\n'), /phase-1 decision venture\/decisions\/D001\.md changed/],
-  ['an edited packet', (runDir) => fs.appendFileSync(path.join(runDir, 'reveal', 'packet.yaml'), '# edited\n'), /reveal\/packet\.yaml changed/],
-  ['an edited phase-1 result', (runDir) => fs.appendFileSync(path.join(runDir, 'RESULT.phase1.md'), '\nedited\n'), /RESULT\.phase1\.md changed/],
+  ['a phase-1 decision edited after the fork', (runDir) => fs.appendFileSync(path.join(runDir, 'venture', 'decisions', 'D001.md'), '\nedited\n'), /phase-1 file venture\/decisions\/D001\.md changed/],
+  ['an edited packet', (runDir) => fs.appendFileSync(path.join(runDir, 'reveal', 'packet.yaml'), '# edited\n'), /not the packet this fork was shown/],
+  ['an edited phase-1 result', (runDir) => fs.appendFileSync(path.join(runDir, 'RESULT.phase1.md'), '\nedited\n'), /RESULT\.phase1\.md is not the parent's RESULT\.md/],
+  ['an edited phase-1 research note', (runDir) => fs.appendFileSync(path.join(runDir, 'venture', 'research', 'desk.md'), '\nedited\n'), /phase-1 file venture\/research\/desk\.md changed/],
+  ['a rewritten phase-1 evidence record', (runDir) => {
+    const venturePath = path.join(runDir, 'venture', 'venture.yaml');
+    const state = readYaml(venturePath);
+    state.evidence_index[0].strength = 'strong';
+    writeYaml(venturePath, state);
+  }, /phase-1 evidence E001 was rewritten/],
+  ['a phase-1 assumption that now asserts something else', (runDir) => {
+    const venturePath = path.join(runDir, 'venture', 'venture.yaml');
+    const state = readYaml(venturePath);
+    state.assumptions[0].statement = 'Buyers will pay for anything';
+    writeYaml(venturePath, state);
+  }, /phase-1 assumption A001 now asserts something else/],
+  ['a rewritten preregistration', (runDir) => {
+    const experimentPath = experimentFileFor(runDir, 'X001');
+    const experiment = readYaml(experimentPath);
+    experiment.preregistration.locked_at = '2026-09-18T09:30:00.000Z';
+    writeYaml(experimentPath, experiment);
+  }, /the preregistration of X001 changed after the fork/],
+  ['a packet edited together with the hash in its key', (runDir, runId) => {
+    const packetPath = path.join(runDir, 'reveal', 'packet.yaml');
+    const packet = readYaml(packetPath);
+    packet.items[4].text = 'Every participant paid the deposit.';
+    writeYaml(packetPath, packet);
+    const key = readKey(runId);
+    key.reveal.packet_sha256 = sha256(fs.readFileSync(packetPath));
+    writeKey(runId, key);
+  }, /not the packet this fork was shown/],
+  ['its key deleted', (runDir, runId) => fs.rmSync(path.join(runsDir, '.keys', `${runId}.json`)), /carries a revealed packet or a phase-1 result but has no fork key/],
 ]) {
   test(`freeze refuses a fork with ${name}`, (t) => {
     const suiteRoot = createSuite(t);
     const parent = createFrozenParent(t, suiteRoot);
     const child = fork(t, parent.runId, 'prereg-failure', '--suite', suiteRoot);
     continueRun(child.runDir, { outcome: 'PARK', branch: 'failure' });
-    tamper(child.runDir);
+    tamper(child.runDir, child.runId);
     const freeze = runScript('freeze-eval-run.mjs', child.runId, '--suite', suiteRoot);
     assert.notEqual(freeze.status, 0);
     assert.match(freeze.stderr, message);
   });
 }
+
+test('an experiment re-serialised with its keys reordered still freezes', (t) => {
+  const suiteRoot = createSuite(t);
+  const parent = createFrozenParent(t, suiteRoot);
+  const child = fork(t, parent.runId, 'prereg-failure', '--suite', suiteRoot);
+  continueRun(child.runDir, { outcome: 'PARK', branch: 'failure' });
+  const experimentPath = experimentFileFor(child.runDir, 'X001');
+  const sortKeys = (value) => (Array.isArray(value)
+    ? value.map(sortKeys)
+    : value && typeof value === 'object'
+      ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]))
+      : value);
+  writeYaml(experimentPath, sortKeys(readYaml(experimentPath)));
+  const freeze = runScript('freeze-eval-run.mjs', child.runId, '--suite', suiteRoot);
+  assert.equal(freeze.status, 0, `${freeze.stdout}\n${freeze.stderr}`);
+});
 
 test('freeze refuses a fork with an uncited packet item', (t) => {
   const suiteRoot = createSuite(t);
@@ -354,8 +438,7 @@ test('a fork on a different framework needs --cross-framework', (t) => {
 
   const crossed = fork(t, parent.runId, 'prereg-failure', '--suite', suiteRoot, '--cross-framework');
   assert.equal(crossed.result.status, 0, crossed.result.stderr);
-  const metadata = JSON.parse(fs.readFileSync(path.join(crossed.runDir, 'metadata.json'), 'utf8'));
-  assert.equal(metadata.reveal.cross_framework, true);
+  assert.equal(readKey(crossed.runId).reveal.cross_framework, true);
 });
 
 test('planted pair arms reveal only their own evidence and are judged as a pair', (t) => {
@@ -372,7 +455,9 @@ test('planted pair arms reveal only their own evidence and are judged as a pair'
   assert.equal(b.result.status, 0, b.result.stderr);
   const packetText = fs.readFileSync(path.join(a.runDir, 'reveal', 'packet.yaml'), 'utf8');
   assert.match(packetText, /None agreed to a paid pilot/);
-  for (const hidden of ['Nine signed', 'expect', 'origin', 'max_strength']) assert.equal(packetText.includes(hidden), false, hidden);
+  for (const hidden of ['Nine signed', 'expect', 'origin', 'max_strength', 'P001']) assert.equal(packetText.includes(hidden), false, hidden);
+  const metadataText = fs.readFileSync(path.join(a.runDir, 'metadata.json'), 'utf8');
+  assert.equal(metadataText.includes('P001'), false);
 
   continueRun(a.runDir, { outcome: 'PARK' });
   continueRun(b.runDir, { outcome: 'PROCEED', strength: (item) => (item === 'PK-2' ? 'strong' : 'medium') });
@@ -396,4 +481,49 @@ test('planted pair arms reveal only their own evidence and are judged as a pair'
   assert.equal(pairs.length, 1);
   assert.equal(pairs[0].result, 'ordered');
   assert.equal(runScript('verify-eval-run.mjs', parent.runId).status, 0);
+});
+
+test('forks of different versions of one pair are never paired', (t) => {
+  const suiteRoot = createSuite(t);
+  const parent = createFrozenParent(t, suiteRoot);
+  const a = fork(t, parent.runId, 'P001-a', '--suite', suiteRoot);
+  continueRun(a.runDir, { outcome: 'PARK' });
+  assert.equal(runScript('freeze-eval-run.mjs', a.runId, '--suite', suiteRoot).status, 0);
+
+  const edited = structuredClone(pair);
+  edited.arms.b.items[1].text = 'Twelve signed a paid pilot and paid the deposit.';
+  edited.expect.order = 'a>b';
+  writeYaml(path.join(suiteRoot, 'evals', 'reference', 'reveal', caseId, 'P001.yaml'), edited);
+  const b = fork(t, parent.runId, 'P001-b', '--suite', suiteRoot);
+  continueRun(b.runDir, { outcome: 'PROCEED' });
+  assert.equal(runScript('freeze-eval-run.mjs', b.runId, '--suite', suiteRoot).status, 0);
+
+  assert.equal(runScript('eval-verdict.mjs', parent.runId).status, 0);
+  const pairs = JSON.parse(fs.readFileSync(path.join(parent.runDir, 'scores', 'pairs.json'), 'utf8')).pairs;
+  assert.deepEqual(pairs, []);
+});
+
+test('a pair verdict finds forks by their key, not by a name that happens to share a prefix', (t) => {
+  const suiteRoot = createSuite(t);
+  const first = createFrozenParent(t, suiteRoot);
+  const second = createFrozenParent(t, suiteRoot);
+  const a = fork(t, first.runId, 'P001-a', '--suite', suiteRoot);
+  const b = fork(t, second.runId, 'P001-b', '--suite', suiteRoot);
+  continueRun(a.runDir, { outcome: 'PARK' });
+  continueRun(b.runDir, { outcome: 'PROCEED' });
+  assert.equal(runScript('freeze-eval-run.mjs', a.runId, '--suite', suiteRoot).status, 0);
+  assert.equal(runScript('freeze-eval-run.mjs', b.runId, '--suite', suiteRoot).status, 0);
+
+  // Give the second parent's fork a name under the first parent's prefix.
+  const disguised = `${first.runId}--deadbeef`;
+  trackRun(t, disguised);
+  fs.renameSync(b.runDir, path.join(runsDir, disguised));
+  const key = readKey(b.runId);
+  key.fork_id = disguised;
+  writeKey(disguised, key);
+  fs.rmSync(path.join(runsDir, '.keys', `${b.runId}.json`));
+
+  assert.equal(runScript('eval-verdict.mjs', first.runId).status, 0);
+  const pairs = JSON.parse(fs.readFileSync(path.join(first.runDir, 'scores', 'pairs.json'), 'utf8')).pairs;
+  assert.deepEqual(pairs, []);
 });

@@ -292,6 +292,7 @@ if (fs.existsSync(referenceDir)) {
   const revealDir = path.join(referenceDir, 'reveal');
   if (fs.existsSync(revealDir)) {
     for (const caseEntry of fs.readdirSync(revealDir, { withFileTypes: true })) {
+      if (caseEntry.name.startsWith('.')) continue;
       if (!caseEntry.isDirectory()) {
         fail(`evals/reference/reveal/${caseEntry.name} must be a case directory`);
         continue;
@@ -300,6 +301,7 @@ if (fs.existsSync(referenceDir)) {
         fail(`Reveal pairs under evals/reference/reveal/${caseEntry.name} have no canonical public case`);
       }
       for (const pairEntry of fs.readdirSync(path.join(revealDir, caseEntry.name), { withFileTypes: true })) {
+        if (pairEntry.name.startsWith('.')) continue;
         const pairPath = path.join(revealDir, caseEntry.name, pairEntry.name);
         const result = validateRevealPairFile(pairPath, caseEntry.name);
         for (const error of result.errors) fail(`evals/reference/reveal/${caseEntry.name}/${pairEntry.name} ${error}`);

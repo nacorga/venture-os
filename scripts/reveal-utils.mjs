@@ -1,8 +1,9 @@
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import Ajv2020 from 'ajv/dist/2020.js';
-import { sha256File } from './eval-provenance.mjs';
+import { sha256File, verifyFrozenRun } from './eval-provenance.mjs';
+import { listExperimentFiles } from './experiment-utils.mjs';
 import { parseYamlFile, repoRoot } from './venture-utils.mjs';
 
 export const revealPairSchemaPath = path.join(repoRoot, 'evals', 'schemas', 'reveal-pair.schema.json');
@@ -73,11 +74,10 @@ export function validateRevealPairFile(filePath, caseName) {
 }
 
 // What the run is shown for a planted arm: that arm's summary and items, and
-// nothing of the other arm or of the expectations.
+// nothing of the other arm, the pair's name or the expectations.
 export function plantedPacket(pair, side) {
   return {
     kind: 'planted',
-    arm: `${pair.id}-${side}`,
     summary: pair.arms[side].summary,
     items: structuredClone(pair.arms[side].items),
   };
@@ -101,7 +101,6 @@ export function preregPacket(experiment, branch) {
     : 'Two participants raised objections to the price during the sessions. Both still completed the committed behavior.';
   return {
     kind: 'prereg',
-    arm: `prereg-${branch}`,
     experiment_id: experiment.id,
     summary: `The preregistered experiment ${experiment.id} was executed as designed. Its results are below.`,
     items: [
@@ -136,47 +135,136 @@ export function evidenceCiting(evidenceIndex, itemId) {
   return (evidenceIndex ?? []).filter((record) => pattern.test(String(record.source ?? '')));
 }
 
-export function sha256Json(value) {
-  return crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex');
+
+// Which arm a fork was shown lives in a sealed key beside the runs, never in
+// the fork: the run under test reads its own metadata.json, and a label saying
+// "prereg-failure" would answer the question the fork asks. Like
+// evals/reference/, the key directory is closed to runs by rule.
+export function forkKeyPath(runsDir, runId) {
+  return path.join(runsDir, '.keys', `${runId}.json`);
 }
 
-// What a fork must still hold when it is frozen: phase 1 untouched, the packet
-// as it was revealed, a decision made after it, and every packet item accounted
-// for in evidence. These are integrity conditions; whether the decision was
-// right is the verdict's business, not freeze's.
-export function forkIntegrityErrors(runDir, metadata, venture) {
+export function readForkKey(runsDir, runId) {
+  const keyPath = forkKeyPath(runsDir, runId);
+  if (!fs.existsSync(keyPath)) return null;
+  return JSON.parse(fs.readFileSync(keyPath, 'utf8'));
+}
+
+export function looksForked(runDir) {
+  return fs.existsSync(path.join(runDir, 'RESULT.phase1.md')) || fs.existsSync(path.join(runDir, 'reveal'));
+}
+
+function listFiles(dir, relative = '') {
+  const found = [];
+  for (const entry of fs.readdirSync(path.join(dir, relative), { withFileTypes: true })) {
+    const child = path.posix.join(relative, entry.name);
+    if (entry.isDirectory()) found.push(...listFiles(dir, child));
+    else found.push(child);
+  }
+  return found;
+}
+
+// Fields a later phase may legitimately change on an earlier evidence record:
+// new links, and the pointer to a correction. Everything else is history.
+const evidenceFieldsAFollowingPhaseMayChange = ['assumption_ids', 'superseded_by'];
+
+function withoutFields(record, fields) {
+  const copy = { ...record };
+  for (const field of fields) delete copy[field];
+  return copy;
+}
+
+// What a fork must still hold when it is frozen, checked against the frozen
+// parent itself rather than against anything the fork could edit: phase 1
+// untouched, the packet exactly what the key says was revealed, a decision made
+// after it, and every packet item accounted for in evidence. Whether that
+// decision was right is the verdict's business, not freeze's.
+export function forkIntegrityErrors({ runsDir, runDir, key, venture, referenceDir }) {
   const errors = [];
-  const { parent, reveal } = metadata;
+  const parentDir = path.join(runsDir, key.parent.run_id);
+  if (!fs.existsSync(parentDir)) {
+    return [`its parent ${key.parent.run_id} is not under evals/runs/; freeze a fork before moving its parent`];
+  }
+  const parent = verifyFrozenRun(parentDir);
+  if (!parent.ok || parent.marker.sha256 !== key.parent.frozen_sha256) {
+    return [`its parent ${key.parent.run_id} is not the verified frozen run it was forked from`];
+  }
 
-  if (venture.latest_decision?.id === parent.decision_id) {
-    errors.push(`no decision was made after the reveal; latest_decision is still ${parent.decision_id}`);
+  if (venture.latest_decision?.id === key.parent.decision_id) {
+    errors.push(`no decision was made after the reveal; latest_decision is still ${key.parent.decision_id}`);
   }
-  for (const [relative, sha256] of Object.entries(parent.decision_files ?? {})) {
-    const filePath = path.join(runDir, relative);
-    if (!fs.existsSync(filePath)) errors.push(`phase-1 decision ${relative} is missing`);
-    else if (sha256File(filePath) !== sha256) errors.push(`phase-1 decision ${relative} changed after the fork`);
-  }
+
   const phase1Result = path.join(runDir, 'RESULT.phase1.md');
-  if (!fs.existsSync(phase1Result) || sha256File(phase1Result) !== parent.result_sha256) {
-    errors.push('RESULT.phase1.md changed after the fork');
+  if (!fs.existsSync(phase1Result) || sha256File(phase1Result) !== sha256File(path.join(parentDir, 'RESULT.md'))) {
+    errors.push('RESULT.phase1.md is not the parent\'s RESULT.md');
   }
 
-  const packetPath = path.join(runDir, 'reveal', 'packet.yaml');
-  if (!fs.existsSync(packetPath) || sha256File(packetPath) !== reveal.packet_sha256) {
-    errors.push('reveal/packet.yaml changed after the fork');
-  } else {
-    const packet = parseYamlFile(packetPath, 'packet').value ?? {};
-    const cited = citedPacketItems(venture.evidence_index);
-    for (const id of packetItemIds(packet)) {
-      if (!cited.has(id)) errors.push(`packet item ${id} is cited by no evidence record (source: reveal/packet.yaml#${id})`);
+  // Every phase-1 file other than the state and the experiment definitions,
+  // which a second phase updates in place, must be byte for byte the parent's.
+  const parentVenture = path.join(parentDir, 'venture');
+  const experimentFile = /(^|\/)experiments\/.+\/experiment\.yaml$/;
+  for (const relative of listFiles(parentVenture)) {
+    if (relative === 'venture.yaml' || experimentFile.test(relative)) continue;
+    const childFile = path.join(runDir, 'venture', relative);
+    if (!fs.existsSync(childFile)) errors.push(`phase-1 file venture/${relative} is missing`);
+    else if (sha256File(childFile) !== sha256File(path.join(parentVenture, relative))) errors.push(`phase-1 file venture/${relative} changed after the fork`);
+  }
+
+  // Experiments may gain results and change status; what they preregistered may not change.
+  for (const parentFile of listExperimentFiles(parentVenture)) {
+    const relative = path.relative(parentVenture, parentFile);
+    const before = parseYamlFile(parentFile, 'experiment').value;
+    const childFile = path.join(runDir, 'venture', relative);
+    const after = fs.existsSync(childFile) ? parseYamlFile(childFile, 'experiment').value : null;
+    if (!after || after.id !== before.id || after.primary_assumption_id !== before.primary_assumption_id) {
+      errors.push(`phase-1 experiment venture/${relative} is missing or no longer the same experiment`);
+    } else if (!isDeepStrictEqual(after.preregistration, before.preregistration)) {
+      errors.push(`the preregistration of ${before.id} changed after the fork`);
     }
   }
 
-  if (parent.preregistration) {
-    const experimentPath = path.join(runDir, parent.preregistration.path);
-    const experiment = fs.existsSync(experimentPath) ? parseYamlFile(experimentPath, 'experiment').value : null;
-    if (!experiment || sha256Json(experiment.preregistration) !== parent.preregistration.sha256) {
-      errors.push(`the preregistration of ${parent.preregistration.experiment_id} changed after the fork`);
+  // State is append-only: earlier evidence keeps its content, earlier
+  // assumptions keep what they assert.
+  const parentState = parseYamlFile(path.join(parentVenture, 'venture.yaml'), 'venture.yaml').value;
+  const evidence = new Map((venture.evidence_index ?? []).map((record) => [record.id, record]));
+  for (const record of parentState.evidence_index ?? []) {
+    const current = evidence.get(record.id);
+    if (!current) errors.push(`phase-1 evidence ${record.id} was removed`);
+    else if (!isDeepStrictEqual(withoutFields(current, evidenceFieldsAFollowingPhaseMayChange), withoutFields(record, evidenceFieldsAFollowingPhaseMayChange))) {
+      errors.push(`phase-1 evidence ${record.id} was rewritten; supersede it with a new record instead`);
+    }
+  }
+  const assumptions = new Map((venture.assumptions ?? []).map((item) => [item.id, item]));
+  for (const item of parentState.assumptions ?? []) {
+    const current = assumptions.get(item.id);
+    if (!current) errors.push(`phase-1 assumption ${item.id} was removed`);
+    else if (current.statement !== item.statement || current.category !== item.category) {
+      errors.push(`phase-1 assumption ${item.id} now asserts something else`);
+    }
+  }
+
+  // The packet must be exactly what the key says was revealed, rebuilt from
+  // its source rather than trusted from a hash the fork could edit.
+  const packetPath = path.join(runDir, 'reveal', 'packet.yaml');
+  let expectedPacket = null;
+  if (key.reveal.kind === 'prereg') {
+    const experiment = parseYamlFile(path.join(parentDir, key.reveal.experiment_path), 'experiment').value;
+    expectedPacket = preregPacket(experiment, key.reveal.branch);
+  } else {
+    const pairFile = revealPairPath(referenceDir, key.case, key.reveal.pair_id);
+    if (!fs.existsSync(pairFile) || sha256File(pairFile) !== key.reveal.pair_sha256) {
+      errors.push(`reveal pair ${key.reveal.pair_id} changed after the fork; a pair edited after use takes a new pair ID`);
+    } else {
+      expectedPacket = plantedPacket(parseYamlFile(pairFile, 'reveal pair').value, key.reveal.side);
+    }
+  }
+  const packet = fs.existsSync(packetPath) ? parseYamlFile(packetPath, 'packet').value : null;
+  if (!packet || sha256File(packetPath) !== key.reveal.packet_sha256 || (expectedPacket && !isDeepStrictEqual(packet, expectedPacket))) {
+    errors.push('reveal/packet.yaml is not the packet this fork was shown');
+  } else {
+    const cited = citedPacketItems(venture.evidence_index);
+    for (const id of packetItemIds(packet)) {
+      if (!cited.has(id)) errors.push(`packet item ${id} is cited by no evidence record (source: reveal/packet.yaml#${id})`);
     }
   }
   return errors;
