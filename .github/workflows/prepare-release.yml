@@ -99,7 +99,6 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     permissions:
-      actions: write
       contents: write
       pull-requests: write
     steps:
@@ -174,6 +173,8 @@ jobs:
 
           **Merge this pull request to publish v${VERSION}.** No second manual workflow run is needed.
 
+          The required \`validate\` check runs on this pull request. Because a bot opened it, GitHub may hold that run until a maintainer selects **Approve and run workflows**; merge once it passes.
+
           ## Version change
 
           This applies a **${VERSION_TYPE}** increment and updates package metadata from the current version to **v${VERSION}**.
@@ -197,13 +198,7 @@ jobs:
           {
             echo "## Next step"
             echo
-            echo "Merge [the version pull request](${PR_URL}) to publish **v${VERSION}**."
+            echo "Merge [the version pull request](${PR_URL}) to publish **v${VERSION}** once its required \`validate\` check passes. If GitHub holds that run for approval, select **Approve and run workflows** on the pull request."
             echo
             echo "No second manual workflow run is needed; publication starts automatically after merge."
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Start required validation on the version branch
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BRANCH: ${{ steps.branch.outputs.branch }}
-        run: gh workflow run validate.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
