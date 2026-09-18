@@ -56,9 +56,13 @@ export function decisionRuleOutcome(rule) {
   return rule && typeof rule === 'object' && gateOutcomes.includes(rule.outcome) ? rule.outcome : null;
 }
 
-function decisionRuleIsExplicit(rule) {
+// An ambiguous result may route to more than one outcome, so on_ambiguous may
+// leave its outcome null as long as the instruction says how it is decided.
+function decisionRuleIsExplicit(rule, { outcomeRequired }) {
   if (typeof rule === 'string') return rule.trim().length > 0;
-  return decisionRuleOutcome(rule) !== null && typeof rule.instruction === 'string' && rule.instruction.trim().length > 0;
+  if (!rule || typeof rule !== 'object') return false;
+  if (outcomeRequired && decisionRuleOutcome(rule) === null) return false;
+  return typeof rule.instruction === 'string' && rule.instruction.trim().length > 0;
 }
 
 export function experimentReadinessErrors(experiment) {
@@ -75,7 +79,7 @@ export function experimentReadinessErrors(experiment) {
   }
 
   for (const rule of ['on_success', 'on_failure', 'on_ambiguous']) {
-    if (!decisionRuleIsExplicit(experiment.decision_rules?.[rule])) {
+    if (!decisionRuleIsExplicit(experiment.decision_rules?.[rule], { outcomeRequired: rule !== 'on_ambiguous' })) {
       errors.push(`${experiment.id} decision_rules.${rule} must be explicit before preregistration`);
     }
   }

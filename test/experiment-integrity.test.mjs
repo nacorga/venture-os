@@ -186,6 +186,23 @@ test('experiment:lock rejects a structured rule whose outcome is still a draft',
   assert.match(lock.stderr, /decision_rules\.on_success must be explicit/);
 });
 
+test('an ambiguous rule may leave its outcome open when its instruction says how it is chosen', (t) => {
+  const experiment = baseExperiment();
+  experiment.decision_rules.on_ambiguous = { outcome: null, instruction: 'Park unless the one commitment is a paid one.' };
+  const { experimentPath } = createFixture(t, experiment);
+  const lock = runScript('lock-experiment.mjs', experimentPath);
+  assert.equal(lock.status, 0, `${lock.stdout}\n${lock.stderr}`);
+});
+
+test('an ambiguous rule with neither outcome nor instruction cannot be locked', (t) => {
+  const experiment = baseExperiment();
+  experiment.decision_rules.on_ambiguous = { outcome: null, instruction: '' };
+  const { experimentPath } = createFixture(t, experiment);
+  const lock = runScript('lock-experiment.mjs', experimentPath);
+  assert.notEqual(lock.status, 0);
+  assert.match(lock.stderr, /decision_rules\.on_ambiguous must be explicit/);
+});
+
 test('a design locked with prose decision rules remains valid', (t) => {
   const experiment = baseExperiment();
   experiment.decision_rules = {

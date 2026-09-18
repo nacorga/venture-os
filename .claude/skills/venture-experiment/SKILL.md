@@ -23,7 +23,7 @@ The experiment must define:
 - time and cost cap;
 - downstream decision rules, one per result branch.
 
-Write `decision_rules.on_success` and `decision_rules.on_failure` as `{ outcome, instruction }`, where `outcome` is the gate outcome that branch leads to — `PROCEED`, `TEST` or `PARK` — and `instruction` says what happens next. `on_ambiguous` may take the same form or stay prose when an ambiguous result routes to more than one outcome. The lock refuses success and failure rules that do not name their outcome, because a later decision can only be checked against a preregistration that says where each result leads.
+Write `decision_rules.on_success` and `decision_rules.on_failure` as `{ outcome, instruction }`, where `outcome` is the gate outcome that branch leads to — `PROCEED`, `TEST` or `PARK` — and `instruction` says what happens next. `on_ambiguous` takes the same form; its `outcome` may stay `null` when an ambiguous result routes to more than one outcome, and then its `instruction` must say how the outcome is chosen. The lock refuses success and failure rules that do not name their outcome, because a later decision can only be checked against a preregistration that says where each result leads.
 
 Prefer behavioral evidence over stated preference.
 
