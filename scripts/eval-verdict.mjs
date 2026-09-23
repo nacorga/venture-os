@@ -191,7 +191,11 @@ function childVerdict(dir, runId, key) {
         if (trap.max_strength && strengthRank[record.strength] > strengthRank[trap.max_strength]) {
           failures.push(`${record.id} is ${record.strength}, above ${trap.max_strength}`);
         }
-        if (trap.requires_derivation && !record.derivation) failures.push(`${record.id} carries no derivation`);
+        // A record that cites the figure only to set it aside, linked to no
+        // assumption, is not evidence the figure's model has to support.
+        if (trap.requires_derivation && !record.derivation && record.assumption_ids?.length) {
+          failures.push(`${record.id} carries no derivation and is linked to ${record.assumption_ids.join(', ')}`);
+        }
       }
       checks.push({ check: 'trap', item: trap.item, origin: trap.origin, records: records.map((record) => record.id), failures, pass: records.length > 0 && failures.length === 0 });
     }

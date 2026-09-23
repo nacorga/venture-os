@@ -229,7 +229,7 @@ function experimentFileFor(runDir, experimentId) {
 
 // Stands in for /eval-continue: cite the packet, record results, decide again.
 // It reads only what the run under test may read.
-function continueRun(runDir, { outcome, branch = null, strength = () => 'medium', skipItem = null, routingHeading = true }) {
+function continueRun(runDir, { outcome, branch = null, strength = () => 'medium', skipItem = null, routingHeading = true, setAside = () => false }) {
   const venturePath = path.join(runDir, 'venture', 'venture.yaml');
   const state = readYaml(venturePath);
   const packet = readYaml(path.join(runDir, 'reveal', 'packet.yaml'));
@@ -238,16 +238,18 @@ function continueRun(runDir, { outcome, branch = null, strength = () => 'medium'
   packet.items.forEach((item, index) => {
     if (item.id === skipItem) return;
     const id = `E${100 + index}`;
-    evidenceIds.push(id);
+    // A record set aside cites its item to say why it is not evidence.
+    const aside = setAside(item.id);
+    if (!aside) evidenceIds.push(id);
     state.evidence_index.push({
       id,
       type: 'first_party_behavioral',
       statement: item.text,
       source: `reveal/packet.yaml#${item.id}`,
       observed_at: '2026-09-18',
-      direction: 'contradicts',
+      direction: aside ? 'neutral' : 'contradicts',
       strength: strength(item.id),
-      assumption_ids: ['A001'],
+      assumption_ids: aside ? [] : ['A001'],
     });
   });
   state.assumptions[0].evidence_ids.push(...evidenceIds);
@@ -482,6 +484,27 @@ test('planted pair arms reveal only their own evidence and are judged as a pair'
   assert.equal(pairs.length, 1);
   assert.equal(pairs[0].result, 'ordered');
   assert.equal(runScript('verify-eval-run.mjs', parent.runId).status, 0);
+});
+
+test('a derivation trap judges the records that use the figure, not one that sets it aside', (t) => {
+  const suiteRoot = createSuite(t);
+  const derived = structuredClone(pair);
+  derived.expect.traps = [{ arm: 'a', item: 'PK-1', requires_derivation: true, origin: 'A count recorded as evidence without its model.' }];
+  writeYaml(path.join(suiteRoot, 'evals', 'reference', 'reveal', caseId, 'P001.yaml'), derived);
+  const parent = createFrozenParent(t, suiteRoot);
+
+  const verdicts = [false, true].map((aside, index) => {
+    const child = fork(t, parent.runId, 'P001-a', '--suite', suiteRoot, '--rep', String(index + 1));
+    continueRun(child.runDir, { outcome: 'PARK', setAside: (item) => aside && item === 'PK-1' });
+    const freeze = runScript('freeze-eval-run.mjs', child.runId, '--suite', suiteRoot);
+    assert.equal(freeze.status, 0, `${freeze.stdout}\n${freeze.stderr}`);
+    runScript('eval-verdict.mjs', child.runId);
+    const verdict = JSON.parse(fs.readFileSync(path.join(child.runDir, 'scores', 'mechanical.json'), 'utf8'));
+    return verdict.checks.find((item) => item.check === 'trap');
+  });
+  assert.equal(verdicts[0].pass, false);
+  assert.match(verdicts[0].failures[0], /carries no derivation and is linked to A001/);
+  assert.equal(verdicts[1].pass, true, JSON.stringify(verdicts[1]));
 });
 
 test('forks of different versions of one pair are never paired', (t) => {
