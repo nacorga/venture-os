@@ -16,6 +16,7 @@ try {
     options: {
       runs: { type: 'string', default: path.join('evals', 'runs') },
       compare: { type: 'string', default: path.join('evals', 'compare') },
+      bare: { type: 'string', default: path.join('evals', 'bare') },
       case: { type: 'string' },
     },
   });
@@ -26,6 +27,7 @@ try {
 
 const runsDir = path.resolve(process.cwd(), args.values.runs);
 const compareDir = path.resolve(process.cwd(), args.values.compare);
+const bareDir = path.resolve(process.cwd(), args.values.bare);
 
 function readJson(filePath) {
   try {
@@ -176,6 +178,28 @@ else {
   for (const result of comparisons) {
     const overall = result.runs.map((run) => `${run} (${short(result.framework_sha256[run])}) ${result.overall[run]}`).join(' · ');
     out(`| ${result.id} | ${result.case} | ${result.same_framework ? 'yes' : 'no'} | ${result.judgments.length} | ${overall} · tie ${result.overall.tie} |`);
+  }
+}
+
+out();
+out('## Against plain Claude');
+out();
+// Written by scripts/eval-bare.mjs: the same pair, answered by Claude without
+// Venture OS. Read beside the reveal pairs above.
+const bareRuns = fs.existsSync(bareDir)
+  ? fs.readdirSync(bareDir).filter((name) => !name.startsWith('.')).map((name) => readJson(path.join(bareDir, name, 'result.json'))).filter(Boolean)
+    .filter((record) => !args.values.case || record.case === args.values.case)
+  : [];
+if (!bareRuns.length) out('No bare runs yet.');
+else {
+  out('| Case | Pair | Rep | Model | First → a · b | Order | Verdict | Cost (USD, list) |');
+  out('| --- | --- | --- | --- | --- | --- | --- | --- |');
+  for (const record of bareRuns) {
+    const phases = record.phases ?? {};
+    const decisions = `${phases.first?.decision ?? '?'} → ${phases.a?.decision ?? '?'} · ${phases.b?.decision ?? '?'}`;
+    const verdict = record.verdict ? (record.verdict.pass ? 'PASS' : 'FAIL') : `failed: ${record.failure ?? '?'}`;
+    const cost = typeof record.total_cost_usd === 'number' ? record.total_cost_usd.toFixed(2) : '?';
+    out(`| ${record.case} | ${record.pair} | ${record.rep} | ${record.phases?.first?.model ?? record.requested?.model ?? '?'} | ${decisions} | ${record.verdict?.order ?? '—'} | ${verdict} | ${cost} |`);
   }
 }
 
