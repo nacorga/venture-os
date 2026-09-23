@@ -99,7 +99,9 @@ out('| Run | Case | Framework | Outcome | Judges | Totals | Items where judges d
 out('| --- | --- | --- | --- | --- | --- | --- |');
 const itemStats = new Map();
 for (const run of parents) {
-  const venture = parseYamlSource(fs.readFileSync(path.join(run.dir, 'venture', 'venture.yaml'), 'utf8'), 'venture.yaml');
+  // A run moved or removed while this reads is reported, not fatal.
+  const venturePath = path.join(run.dir, 'venture', 'venture.yaml');
+  const venture = fs.existsSync(venturePath) ? parseYamlSource(fs.readFileSync(venturePath, 'utf8'), 'venture.yaml') : { value: null };
   const outcome = venture.value?.latest_decision?.outcome ?? '?';
   const scores = scoresOf(run);
   const parsed = scores.filter((score) => score.block);

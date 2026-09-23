@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
-import { sessionConfiguration } from '../scripts/eval-batch.mjs';
+import { probePrompt, sessionConfiguration } from '../scripts/eval-batch.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const runsDir = path.join(repoRoot, 'evals', 'runs');
@@ -23,7 +23,9 @@ import path from 'node:path';
 const args = process.argv.slice(2);
 const option = (name) => args[args.indexOf(name) + 1];
 const prompt = option('-p');
-if (process.env.FAKE_CLAUDE_LOG) {
+const probe = prompt === ${JSON.stringify(probePrompt)};
+const dropped = process.env.FAKE_DROP_ALWAYS || (probe ? null : process.env.FAKE_DROP_AGENT);
+if (process.env.FAKE_CLAUDE_LOG && !probe) {
   fs.writeFileSync(process.env.FAKE_CLAUDE_LOG, JSON.stringify({
     args,
     env: {
@@ -38,11 +40,11 @@ const emit = (event) => process.stdout.write(JSON.stringify(event) + '\\n');
 const root = process.cwd();
 const skills = fs.readdirSync(path.join(root, '.claude', 'skills'));
 const agents = fs.readdirSync(path.join(root, '.claude', 'agents')).map((name) => name.replace(/\\.md$/, ''))
-  .filter((agent) => agent !== process.env.FAKE_DROP_AGENT);
+  .filter((agent) => agent !== dropped);
 emit({ type: 'system', subtype: 'init', session_id: 'fake-session', claude_code_version: 'fake', apiKeySource: 'none',
   model: option('--model'), permissionMode: option('--permission-mode'),
   skills: [...skills, 'debug'], agents: [...agents, 'Explore'], plugins: [], mcp_servers: [] });
-if (process.env.FAKE_DROP_AGENT) await new Promise((resolve) => setTimeout(resolve, 30000));
+if (dropped || probe) await new Promise((resolve) => setTimeout(resolve, 30000));
 const [command, id, judge] = prompt.split(' ');
 const runDir = path.join(root, 'evals', 'runs', id);
 if (['/eval-run', '/eval-continue'].includes(command) && process.env.FAKE_FIXTURE) fs.cpSync(process.env.FAKE_FIXTURE, runDir, { recursive: true });
@@ -173,6 +175,8 @@ test('an unattended session runs under the fixed configuration and is frozen wit
   assert.ok(excluded.some((file) => file.endsWith(`${path.sep}.claude${path.sep}CLAUDE.md`)), 'the operator\'s CLAUDE.md');
   assert.ok(excluded.includes(path.join(path.dirname(fs.realpathSync(repoRoot)), 'CLAUDE.md')), 'a CLAUDE.md above the checkout');
   assert.equal(started.allowed.some((tool) => /eval:(freeze|verdict|compare|fork)/.test(tool)), false, 'a run cannot run the evaluator side');
+  assert.ok(started.allowed.includes(`Write(./evals/runs/${runId}/**)`), 'a run writes into its own directory');
+  assert.equal(started.allowed.some((tool) => /^(Edit|Write)$/.test(tool)), false, 'and nowhere else');
   assert.deepEqual(readJson(fake.log).env, { CLAUDECODE: null, CLAUDE_EFFORT: null, CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1' });
 
   const telemetry = readJson(path.join(runDir, 'telemetry.json'));
@@ -212,6 +216,18 @@ test('a session that did not load exactly this project is stopped at start and i
   const again = batch(fake, ['run', runId], { FAKE_FIXTURE: completedRunFixture(fake.dir) });
   assert.notEqual(again.status, 0);
   assert.match(again.stderr, /a session already started on it/);
+});
+
+test('a probe that is not isolated stops the batch before any run is taken', (t) => {
+  const fake = scratch(t);
+  const { runId, runDir } = newRun(t);
+  const startedAt = Date.now();
+  const result = batch(fake, ['run', runId], { FAKE_DROP_ALWAYS: 'challenger' });
+  assert.notEqual(result.status, 0);
+  assert.ok(Date.now() - startedAt < 20000, `took ${Date.now() - startedAt} ms`);
+  assert.match(result.stderr, /Nothing started: a probe session[\s\S]*project agents not loaded: challenger/);
+  assert.equal(fs.existsSync(path.join(runDir, 'telemetry.json')), false, 'the run is not taken');
+  assert.equal(fs.existsSync(fake.log), false, 'no session started');
 });
 
 test('a session that ignores SIGTERM is killed', (t) => {
@@ -307,6 +323,7 @@ test('a judge scores a frozen run in its own session and may change nothing else
   const telemetry = readJson(path.join(runDir, 'scores', 'judge-a.telemetry.json'));
   assert.equal(telemetry.prompt, `/eval-score ${runId} judge-a`);
   assert.deepEqual(telemetry.configuration, sessionConfiguration('score'));
+  assert.ok(startedWith(fake).allowed.includes(`Write(./evals/runs/${runId}/scores/**)`));
   const { allowed } = startedWith(fake);
   assert.ok(allowed.includes('Bash(npm run eval:verdict * --facts-only)'));
   assert.equal(allowed.some((tool) => tool.startsWith('Bash(npm run') && !/eval:verify|--facts-only/.test(tool)), false, 'a judge cannot print a verdict before its score is fixed');

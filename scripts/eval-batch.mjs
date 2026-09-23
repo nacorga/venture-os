@@ -30,6 +30,11 @@ import { looksForked, readForkKey } from './reveal-utils.mjs';
 
 const readingShell = ['Bash(ls *)', 'Bash(wc *)', 'Bash(cat *)', 'Bash(head *)', 'Bash(tail *)', 'Bash(grep *)', 'Bash(find *)'];
 
+// Where a session may write: its own run, a judge's scores/, a comparison's
+// judgments/. <writable> stands for that directory in the recorded
+// configuration, so every run of one kind records the same list.
+const writing = ['Edit(./<writable>/**)', 'Write(./<writable>/**)'];
+
 // What each kind of session may do. Sessions run in dontAsk mode: a tool call
 // outside its list is denied and recorded, never approved — only the CLI's
 // built-in read-only commands pass unlisted. A run researches, writes its
@@ -38,15 +43,20 @@ const readingShell = ['Bash(ls *)', 'Bash(wc *)', 'Bash(cat *)', 'Bash(head *)',
 // its score is fixed. A comparison judge runs no script.
 export const allowedTools = {
   run: [
-    'Read', 'Edit', 'Write', 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'Agent', 'Skill', 'TodoWrite',
+    'Read', ...writing, 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'Agent', 'Skill', 'TodoWrite',
     'Bash(npm run evidence:check *)', 'Bash(npm run experiment:lock *)', 'Bash(mkdir *)', ...readingShell,
   ],
   score: [
-    'Read', 'Edit', 'Write', 'Glob', 'Grep', 'TodoWrite',
+    'Read', ...writing, 'Glob', 'Grep', 'TodoWrite',
     'Bash(npm run eval:verify *)', 'Bash(npm run eval:verdict * --facts-only)', 'Bash(mkdir *)', ...readingShell,
   ],
-  compare: ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'TodoWrite', 'Bash(mkdir *)', ...readingShell],
+  compare: ['Read', ...writing, 'Glob', 'Grep', 'TodoWrite', 'Bash(mkdir *)', ...readingShell],
 };
+
+// Builtin plugins the CLI ships enabled. --setting-sources does not govern
+// them and `claude plugin list` does not show them, so they are named here;
+// one the CLI adds later fails the preflight before any run is taken.
+const builtinPlugins = ['agents-md@builtin', 'telemetry@builtin'];
 const permissionMode = 'dontAsk';
 const efforts = ['low', 'medium', 'high', 'xhigh', 'max'];
 const sessionTimeoutMs = 3 * 60 * 60 * 1000;
@@ -102,8 +112,11 @@ export function foreignInstructionFiles(root, env = process.env) {
   return [...new Set(files)];
 }
 
-export function sessionInvocation({ kind, prompt, model, effort, root, env = process.env }) {
-  const settings = { claudeMdExcludes: foreignInstructionFiles(root, env) };
+export function sessionInvocation({ kind, prompt, model, effort, root, writable, env = process.env }) {
+  const settings = {
+    claudeMdExcludes: foreignInstructionFiles(root, env),
+    enabledPlugins: Object.fromEntries(builtinPlugins.map((plugin) => [plugin, false])),
+  };
   const childEnv = { ...env, CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1' };
   for (const name of inheritedSessionVariables) delete childEnv[name];
   return {
@@ -116,7 +129,7 @@ export function sessionInvocation({ kind, prompt, model, effort, root, env = pro
       '--strict-mcp-config',
       '--settings', JSON.stringify(settings),
       '--permission-mode', permissionMode,
-      '--allowedTools', ...allowedTools[kind],
+      '--allowedTools', ...allowedTools[kind].map((tool) => tool.replace('<writable>', writable)),
     ],
     env: childEnv,
   };
@@ -344,6 +357,7 @@ function runPlan(root, runId, suitePath) {
     kind: 'run',
     problems,
     prompt: `/${skill} ${runId}`,
+    writable: path.relative(root, runDir),
     telemetryPath: path.join(runDir, 'telemetry.json'),
     // Freeze seals the telemetry as it stands; a run the session froze itself
     // keeps the record written when it started.
@@ -366,7 +380,7 @@ function runPlan(root, runId, suitePath) {
 // A judge writes one file. Everything else in the directory it works in is
 // hashed before and after its session: another judge's file, a verdict, the
 // artifacts under comparison.
-function judgedPlan({ kind, id, label, targetDir, workDir, outputPath, prompt, missing, check, alsoSkip = [] }) {
+function judgedPlan({ root, kind, id, label, targetDir, workDir, outputPath, prompt, missing, check, alsoSkip = [] }) {
   if (!validId(id) || !fs.existsSync(targetDir)) return { id, problems: [missing] };
   const telemetryPath = outputPath.replace(/\.md$/, '.telemetry.json');
   const problems = [...check()];
@@ -377,6 +391,7 @@ function judgedPlan({ kind, id, label, targetDir, workDir, outputPath, prompt, m
     kind,
     problems,
     prompt,
+    writable: path.relative(root, path.dirname(outputPath)),
     telemetryPath,
     sealed: () => false,
     guard: { dir: workDir, skip },
@@ -389,6 +404,7 @@ function scorePlan(root, label, runId) {
   const runDir = path.join(root, 'evals', 'runs', runId);
   const scoresDir = path.join(runDir, 'scores');
   const plan = judgedPlan({
+    root,
     kind: 'score',
     id: runId,
     label,
@@ -420,6 +436,7 @@ function scorePlan(root, label, runId) {
 function comparePlan(root, label, compareId) {
   const compareDir = path.join(root, 'evals', 'compare', compareId);
   return judgedPlan({
+    root,
     kind: 'compare',
     id: compareId,
     label,
@@ -432,6 +449,41 @@ function comparePlan(root, label, compareId) {
       ...(fs.existsSync(path.join(compareDir, 'compare.md')) ? [] : ['it has no compare.md']),
       ...(fs.existsSync(path.join(compareDir, 'result.json')) ? ['it is already unblinded'] : []),
     ],
+  });
+}
+
+export const probePrompt = 'Reply with the single word OK.';
+
+// Starts one session and stops it as soon as it reports what it loaded, before
+// any run is taken: a CLI update that enabled a new plugin, or an account that
+// cannot start the model, fails here once instead of in every session.
+function preflight(root, claude, { kind, model, effort }) {
+  return new Promise((resolve) => {
+    const invocation = sessionInvocation({ kind, prompt: probePrompt, model, effort, root, writable: 'evals/runs/.preflight' });
+    const child = spawn(claude, invocation.args, { cwd: root, env: invocation.env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let answer = null;
+    let stderr = '';
+    const settle = (errors) => {
+      answer ??= errors;
+      child.kill('SIGKILL');
+    };
+    const timer = setTimeout(() => settle(['it reported no configuration within two minutes']), 120000);
+    child.stderr.on('data', (chunk) => {
+      stderr = (stderr + chunk).slice(-2000);
+    });
+    readline.createInterface({ input: child.stdout }).on('line', (line) => {
+      try {
+        const event = JSON.parse(line);
+        if (event.type === 'system' && event.subtype === 'init') settle(initErrors(event, root));
+      } catch {
+        // not an event
+      }
+    });
+    child.on('error', (error) => settle([`could not start ${claude}: ${error.message}`]));
+    child.on('close', () => {
+      clearTimeout(timer);
+      resolve(answer ?? [`it ended without reporting its configuration${stderr.trim() ? `: ${stderr.trim()}` : ''}`]);
+    });
   });
 }
 
@@ -457,7 +509,7 @@ async function execute(root, plan, { claude, model, effort }) {
   }
   log(`${plan.prompt} started`);
   const before = plan.guard ? fileHashes(plan.guard.dir, plan.guard.skip) : null;
-  const session = await runSession({ root, claude, invocation: sessionInvocation({ kind: plan.kind, prompt: plan.prompt, model, effort, root }) });
+  const session = await runSession({ root, claude, invocation: sessionInvocation({ kind: plan.kind, prompt: plan.prompt, model, effort, root, writable: plan.writable }) });
   const finishedAt = new Date();
 
   let failure = session.failure;
@@ -557,6 +609,8 @@ async function main() {
   // run after four hours has spent the four hours on a partial baseline.
   const problems = plans.flatMap((plan) => plan.problems.map((problem) => `  - ${plan.id}: ${problem}`));
   if (problems.length) stop(`Nothing started:\n${problems.join('\n')}`);
+  const misconfigured = await preflight(root, claude, { kind, model, effort });
+  if (misconfigured.length) stop(`Nothing started: a probe session is not isolated as a run must be:\n${misconfigured.map((error) => `  - ${error}`).join('\n')}`);
 
   const outcomes = await pool(plans, Number(args.values.jobs), (plan) => execute(root, plan, { claude, model, effort }));
   const failed = outcomes.filter((outcome) => outcome.failure);
