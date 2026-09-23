@@ -53,6 +53,7 @@ const expected = [
   'scripts/eval-compare.mjs',
   'scripts/eval-summary.mjs',
   'scripts/eval-batch.mjs',
+  'scripts/eval-bare.mjs',
   'evals/schemas/reveal-pair.schema.json',
   'test/contracts.test.mjs'
 ];

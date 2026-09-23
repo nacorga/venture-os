@@ -51,6 +51,9 @@ export const allowedTools = {
     'Bash(npm run eval:verify *)', 'Bash(npm run eval:verdict * --facts-only)', 'Bash(mkdir *)', ...readingShell,
   ],
   compare: ['Read', ...writing, 'Glob', 'Grep', 'TodoWrite', 'Bash(mkdir *)', ...readingShell],
+  // Claude without Venture OS (scripts/eval-bare.mjs): the run's research
+  // tools, in a working directory of its own, and no framework script.
+  bare: ['Read', ...writing, 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'Agent', 'TodoWrite', ...readingShell],
 };
 
 // Builtin plugins the CLI ships enabled. --setting-sources does not govern
@@ -192,7 +195,7 @@ export function sessionTelemetry(events) {
   };
 }
 
-function runSession({ root, claude, invocation }) {
+export function runSession({ root, claude, invocation, checkInit = (init) => initErrors(init, root) }) {
   return new Promise((resolve) => {
     const events = [];
     const timers = [];
@@ -237,7 +240,7 @@ function runSession({ root, claude, invocation }) {
       }
       events.push(event);
       if (event.type === 'system' && event.subtype === 'init' && events.filter((seen) => seen.subtype === 'init').length === 1) {
-        const errors = initErrors(event, root);
+        const errors = checkInit(event);
         if (errors.length) abort(`session configuration: ${errors.join('; ')}`);
       }
     });

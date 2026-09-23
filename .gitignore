@@ -3,6 +3,7 @@ node_modules/
 .claude/settings.local.json
 evals/runs/
 evals/compare/
+evals/bare/
 ventures/*
 !ventures/.gitkeep
 *.log

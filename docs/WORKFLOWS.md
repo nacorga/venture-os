@@ -191,8 +191,9 @@ npm run eval:verify -- <run-id>
 npm run eval:fork -- <run-id> --arm <arm> [--rep <n>] [--suite <path>] [--model-label <label>] [--cross-framework]
 npm run eval:verdict -- <run-id> [--facts-only]
 npm run eval:compare -- <run-a> <run-b> | --unblind <compare-id>
-npm run eval:summary -- [--runs <dir>] [--compare <dir>] [--case <id>]
+npm run eval:summary -- [--runs <dir>] [--compare <dir>] [--bare <dir>] [--case <id>]
 node scripts/eval-batch.mjs <run|score|compare> ... --model <model> --effort <level>
+node scripts/eval-bare.mjs <case>... --model <model> --effort <level> [--suite <path>] [--reps <n>]
 npm run repo:check
 ```
 

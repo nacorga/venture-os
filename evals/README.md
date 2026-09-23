@@ -107,8 +107,9 @@ npm run eval:fork -- <run-id> --arm <arm> [--rep <n>] [--suite <path>] [--model-
 npm run eval:verdict -- <run-id> [--facts-only]
 npm run eval:compare -- <run-a> <run-b>
 npm run eval:compare -- --unblind <compare-id>
-npm run eval:summary -- [--runs <dir>] [--compare <dir>] [--case <id>]
+npm run eval:summary -- [--runs <dir>] [--compare <dir>] [--bare <dir>] [--case <id>]
 node scripts/eval-batch.mjs <run|score|compare> ... --model <model> --effort <level>
+node scripts/eval-bare.mjs <case>... --model <model> --effort <level> [--suite <path>] [--reps <n>]
 ```
 
 These are implementation primitives, not a second human workflow to memorize.
@@ -191,7 +192,17 @@ npm run eval:compare -- --unblind <compare-id>
 
 Comparing two runs of the same framework (an A/A comparison) is how the noise of the comparison itself is measured: preferences that split one way across A/A pairs as often as across A/B pairs are noise.
 
-`npm run eval:summary` reads everything above across frozen runs — judged items with their spread, mechanical verdicts, pair verdicts, unblinded comparisons, session telemetry and fact-sheet alarms — and prints one report. `--runs` and `--compare` point it at an archive, such as a private suite's.
+### Against plain Claude
+
+Whether Venture OS is worth using is a comparison against Claude asked plainly, on the same case and the same planted pair:
+
+```bash
+node scripts/eval-bare.mjs <case>... --model <model> --effort <level> [--suite <path>] [--pair P001] [--reps <n>] [--jobs <n>]
+```
+
+One session gets the case's title and statement, researches as it judges useful and ends with a `DECISION:` line; each arm of the pair continues a copy of that session (`--resume --fork-session`) with the arm's summary and items, and decides again. The session runs in a working directory outside this checkout, so no Venture OS instruction, skill or agent loads, under the unattended runner's configuration otherwise — same model and effort, research tools, `dontAsk`, no operator instructions, plugins or MCP servers. Its record, `evals/bare/<id>/result.json` (gitignored), holds the prompts, each phase's answer and telemetry, and the verdict a pair verdict would give: each arm's outcome against the pair's expectations, and the order between the arms. Traps are not scored — a plain answer keeps no evidence records — so the comparison is on decisions alone. The first phase's outcome is not scored either: nothing here says which gate a case deserves.
+
+ across frozen runs — judged items with their spread, mechanical verdicts, pair verdicts, bare runs, unblinded comparisons, session telemetry and fact-sheet alarms — and prints one report. `--runs`, `--compare` and `--bare` point it at an archive, such as a private suite's.
 
 ## Private benchmark boundary
 
