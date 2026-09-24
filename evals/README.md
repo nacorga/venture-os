@@ -206,6 +206,21 @@ This measures whether a decision moves the way the pair expects, not whether eit
 
 The v0.3.0 result did not meet the preregistered criterion — Venture OS keeping pairs in order at least 20 percentage points more often than plain Claude, with no inversion. Venture OS kept 7 of 15 pairs in order (47%) and inverted none; plain Claude kept 15 of 21 (71%) and inverted one. Six of Venture OS's eight ties were judged defensible: the pair's decisive fact bore on something the run had already set aside.
 
+### Source fidelity
+
+Whether a claim says what its cited source says is checked by hand, not by a script: claims are sampled with a fixed seed — evidence records from a Venture OS run's final state, sentences carrying a link from a plain answer — shuffled, stripped of anything naming the system, and each is judged against the page it cites by a checker that sees only the claim and its URL. A claim is *faithful* when every figure, date and name it attributes to the source is there, and *absent* when its core fact is not.
+
+On the v0.3.0 private suite, four cases, 40 Venture OS records and 33 plain sentences:
+
+| | Faithful | Core fact absent or contradicted |
+|---|---|---|
+| Venture OS v0.3.0 | 19 of 40 | 2 of 40 |
+| Claude asked plainly | 9 of 33 | 8 of 33 |
+
+The difference in absent facts is the finding (Fisher p = 0.04): a plain answer attributes a figure to a source that does not contain it in about one link in four, Venture OS in about one in twenty. Most of Venture OS's remaining failures were figures from another page filed under a single source, which is what `framework/evidence-standard.md` § One record, one source now forbids. On three of the same cases re-run under that rule, 25 of 30 records were faithful, against 13 of 30 before it (p = 0.003), with absent facts unchanged (2 against 1).
+
+One checker per claim, of the same model family; small samples; and a record's style can give its system away, so the blinding is partial. It measures fidelity to the cited page, not whether the page is right, and plain sentences with no link are outside it.
+
 ### Summary report
 
 `npm run eval:summary` reads every record described above — judged items with their spread, mechanical verdicts, pair verdicts, bare runs, unblinded comparisons, session telemetry and fact-sheet alarms — and prints one report. `--runs`, `--compare` and `--bare` point it at an archive, such as a private suite's.
