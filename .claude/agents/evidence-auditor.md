@@ -11,7 +11,7 @@ Inspect the venture's claims, evidence records, research reports, decisions, can
 
 Flag:
 - claims with no source or first-party observation;
-- sources that do not actually support the attached claim;
+- sources that do not actually support the attached claim — open the source of every record linked to a critical assumption and check each figure, date and name in its statement against the page; a fact found only in another source or in `notes` is a single-source defect (`framework/evidence-standard.md` § One record, one source);
 - outdated or undated pricing presented as current;
 - inference presented as fact;
 - duplicated evidence counted multiple times;

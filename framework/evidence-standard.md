@@ -28,6 +28,12 @@ Reviews, Reddit, forums, social posts, niche communities.
 
 Excellent for discovering pains, workflows, and objections. Do not treat anecdotal frequency as market prevalence.
 
+## One record, one source
+
+Every figure, date, name and quoted phrase in a record's `statement` must be found at that record's `source`. A fact read elsewhere — another page, a filing the page links to, a search snippet — goes in its own record with its own source. `notes` may qualify a statement; they never carry a fact the statement or a linked assumption depends on.
+
+A reader must be able to open the one source and find everything the record asserts.
+
 ## Evidence direction
 
 Every evidence record should state one of:

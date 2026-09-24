@@ -12,7 +12,7 @@ Your mandate is to discover information, not to sell the venture thesis.
 Before researching, read the venture state and identify the critical assumptions that external evidence can inform.
 
 For every material finding:
-- preserve the source URL or source identity;
+- preserve the source URL or source identity, one source per finding: every figure and name in a finding must be on the page it cites (`framework/evidence-standard.md` § One record, one source);
 - record the access date when practical;
 - classify the evidence type;
 - state whether it supports, contradicts, or is neutral toward a specific assumption;
