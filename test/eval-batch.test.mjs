@@ -324,6 +324,7 @@ test('a judge scores a frozen run in its own session and may change nothing else
   assert.equal(telemetry.prompt, `/eval-score ${runId} judge-a`);
   assert.deepEqual(telemetry.configuration, sessionConfiguration('score'));
   assert.ok(startedWith(fake).allowed.includes(`Write(./evals/runs/${runId}/scores/**)`));
+  assert.ok(startedWith(fake).allowed.includes(`Write(/${path.join(runsDir, runId, 'scores')}/**)`), 'and by absolute path, which a ./ rule does not match');
   const { allowed } = startedWith(fake);
   assert.ok(allowed.includes('Bash(npm run eval:verdict * --facts-only)'));
   assert.equal(allowed.some((tool) => tool.startsWith('Bash(npm run') && !/eval:verify|--facts-only/.test(tool)), false, 'a judge cannot print a verdict before its score is fixed');
