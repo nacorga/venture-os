@@ -55,6 +55,8 @@ AI can generate convincing business advice very easily. Venture OS makes that ad
 - cheap experiments before expensive builds;
 - persistent state that survives chat sessions.
 
+The traceable evidence is measured, not just required: on a private benchmark, a plain Claude answer attributed a figure to a source that does not contain it in about one cited sentence in four, and a Venture OS run in about one record in twenty ([`evals/README.md`](evals/README.md) § Source fidelity). Whether Venture OS *decides* better than Claude is not shown: the comparison of decisions in the same file, § Against plain Claude, did not find it.
+
 The system does not assign an overall “idea score.” It asks what is known, what is assumed, what could kill the thesis, and what the cheapest credible next test is.
 
 ## Decision gates
