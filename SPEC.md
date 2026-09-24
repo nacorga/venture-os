@@ -145,7 +145,7 @@ A thesis may be reframed as evidence changes, but thesis reframing is not a four
 
 Every material venture claim should resolve to fact, inference, assumption, or opinion.
 
-Evidence records preserve provenance, direction, strength, affected assumptions, segment applicability, and date where freshness matters.
+Evidence records preserve provenance, direction, strength, affected assumptions, segment applicability, and date where freshness matters. Each record carries one source, and everything its statement asserts is found at that source.
 
 Contradictory evidence remains visible. Unknown is a valid state. Derived quantitative evidence must disclose its model, inputs, applicability, and verification limits.
 

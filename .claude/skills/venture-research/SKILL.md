@@ -21,7 +21,7 @@ Replace important assumptions with sourced evidence where possible and expose wh
 3. Write a short research plan mapped to those assumptions.
 4. Delegate independent workstreams to `market-researcher` and `competitor-analyst` when parallel research is useful.
 5. Research disconfirming evidence, not only supportive evidence.
-6. Persist an evidence record for each material finding. Use stable IDs such as `E001`, `E002` and give the record an explicit `segment` whenever it is linked to a segment-scoped assumption.
+6. Persist an evidence record for each material finding. One record carries one source, and everything its statement asserts must be found there (`framework/evidence-standard.md` § One record, one source). Use stable IDs such as `E001`, `E002` and give the record an explicit `segment` whenever it is linked to a segment-scoped assumption.
 7. Before linking any evidence record to an assumption, check two things independently:
    - **segment transport:** if the evidence segment differs from the assumption segment, either add a concrete `transport_justification` to the evidence record explaining why the finding transfers, or leave the record unlinked;
    - **claim transport:** confirm the evidence measures the quantity the assumption actually asserts. A price or turnaround record is not evidence of cadence, retention, prevalence, or willingness to pay merely because it concerns the same buyer.
