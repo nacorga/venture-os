@@ -32,8 +32,10 @@ const readingShell = ['Bash(ls *)', 'Bash(wc *)', 'Bash(cat *)', 'Bash(head *)',
 
 // Where a session may write: its own run, a judge's scores/, a comparison's
 // judgments/. <writable> stands for that directory in the recorded
-// configuration, so every run of one kind records the same list.
-const writing = ['Edit(./<writable>/**)', 'Write(./<writable>/**)'];
+// configuration, so every run of one kind records the same list. Each rule is
+// given twice: a `./` rule does not match a Write whose file_path is absolute,
+// which is how a judge lost its score file, and `//` is the absolute form.
+const writing = ['Edit(./<writable>/**)', 'Write(./<writable>/**)', 'Edit(/<absolute-writable>/**)', 'Write(/<absolute-writable>/**)'];
 
 // What each kind of session may do. Sessions run in dontAsk mode: a tool call
 // outside its list is denied and recorded, never approved — only the CLI's
@@ -132,7 +134,7 @@ export function sessionInvocation({ kind, prompt, model, effort, root, writable,
       '--strict-mcp-config',
       '--settings', JSON.stringify(settings),
       '--permission-mode', permissionMode,
-      '--allowedTools', ...allowedTools[kind].map((tool) => tool.replace('<writable>', writable)),
+      '--allowedTools', ...allowedTools[kind].map((tool) => tool.replace('<writable>', writable).replace('<absolute-writable>', path.resolve(root, writable))),
     ],
     env: childEnv,
   };
