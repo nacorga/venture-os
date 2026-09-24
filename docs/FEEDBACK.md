@@ -1,6 +1,6 @@
 # Feedback and hosted interest
 
-Venture OS v0.1 should learn from real usage without turning the repository into a telemetry product.
+Venture OS should learn from real usage without turning the repository into a telemetry product.
 
 ## Default privacy position
 
@@ -39,7 +39,7 @@ Use:
 
 ## Hosted-product signal
 
-Interest in a future hosted version is intentionally lightweight in v0.1.
+Interest in a future hosted version is intentionally lightweight.
 
 Users can indicate `Yes`, `Maybe`, or `No` in the Workflow feedback issue form. This is a demand signal, not a mailing list and not evidence by itself that a hosted product should be built.
 

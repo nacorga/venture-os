@@ -167,9 +167,9 @@ Fresh-session boundaries are part of the evaluation design, not optional ceremon
 The sessions of B to E can run with no one at the keyboard, each in a fresh `claude -p` process under one fixed configuration that is recorded with its cost; creating forks and comparisons, verdicts and unblinding stay the commands above (`evals/README.md` § Unattended sessions):
 
 ```bash
-node scripts/eval-batch.mjs run <run-id|fork-id>... --model <model> --effort <level> [--suite <path>]
-node scripts/eval-batch.mjs score <judge-label> <run-id>... --model <model> --effort <level>
-node scripts/eval-batch.mjs compare <judge-label> <compare-id>... --model <model> --effort <level>
+node scripts/eval-batch.mjs run <run-id|fork-id>... --model <model> --effort <level> [--suite <path>] [--jobs <n>]
+node scripts/eval-batch.mjs score <judge-label> <run-id>... --model <model> --effort <level> [--jobs <n>]
+node scripts/eval-batch.mjs compare <judge-label> <compare-id>... --model <model> --effort <level> [--jobs <n>]
 ```
 
 Real or sensitive holdout benchmarks stay outside the public repository and should run against a pinned public commit or recorded effective runtime hash.
@@ -193,7 +193,7 @@ npm run eval:verdict -- <run-id> [--facts-only]
 npm run eval:compare -- <run-a> <run-b> | --unblind <compare-id>
 npm run eval:summary -- [--runs <dir>] [--compare <dir>] [--bare <dir>] [--case <id>]
 node scripts/eval-batch.mjs <run|score|compare> ... --model <model> --effort <level>
-node scripts/eval-bare.mjs <case>... --model <model> --effort <level> [--suite <path>] [--reps <n>]
+node scripts/eval-bare.mjs <case>... --model <model> --effort <level> [--suite <path>] [--pair P001] [--reps <n>] [--jobs <n>]
 npm run repo:check
 ```
 

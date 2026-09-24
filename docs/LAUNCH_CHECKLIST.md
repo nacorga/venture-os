@@ -1,4 +1,4 @@
-# Public v0.1 launch checklist
+# Public launch checklist
 
 Status: **technical launch complete**. The remaining M3 gate is external usage by people who did not build Venture OS.
 
@@ -53,7 +53,7 @@ Verified against the active repository ruleset and merge settings on 2026-09-17:
 - [x] Linear history is required.
 - [x] Squash merge is the enabled merge strategy; merged head branches are automatically deleted.
 - [ ] Configure the repository social preview image.
-- [ ] Review GitHub code-security settings: dependency graph, Dependabot alerts/security updates, secret scanning, and push protection where available.
+- [x] GitHub code-security settings, verified 2026-09-24: Dependabot alerts and security updates, secret scanning and push protection are on; secret scanning's non-provider patterns and validity checks are off.
 
 ## Community surface — complete
 
@@ -70,6 +70,7 @@ Verified against the active repository ruleset and merge settings on 2026-09-17:
 - [x] Repository published from sanitized history.
 - [x] Public `v0.1.0` release created.
 - [x] Public `v0.1.1` release published.
+- [x] Releases `v0.2.0` through `v0.3.0` published through [`PUBLICATION.md`](PUBLICATION.md) § Routine release workflow.
 - [x] README links and hero asset resolve from the public repository.
 - [x] CI run completed successfully on the public default branch after launch.
 - [x] Root commit author uses the GitHub `noreply` address rather than a personal email.

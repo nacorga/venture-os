@@ -1,4 +1,4 @@
-# Venture OS — Current Repository Spec v0.1
+# Venture OS — Current Repository Spec
 
 ## 1. Objective
 
@@ -12,7 +12,7 @@ Success means better decisions, less premature building, preserved venture memor
 
 Current users are founders, builders, developers, product people, and operators who are comfortable using Claude Code from the terminal and inspecting intermediate artifacts.
 
-Future interfaces may make the same system accessible to non-technical users, but v0.1 is intentionally repository-first and Claude Code-first.
+Future interfaces may make the same system accessible to non-technical users, but for now Venture OS is repository-first and Claude Code-first.
 
 ## 3. Current scope
 
@@ -199,9 +199,9 @@ The regression suite judges whether Venture OS:
 
 It checks by script, rather than judging, that gate decisions are auditable and that contradictory evidence changes the analysis. Judged totals are a floor alarm; mechanical verdicts, blind pairwise comparison and the spread between independent judges are what compare two versions of Venture OS.
 
-The rubric itself lives in `evals/RUBRIC.md`. Whether contradictory evidence changes the analysis is measured directly rather than judged: a frozen run can be forked, shown evidence it never saw, and its second decision checked by script against its own preregistration or against a planted reveal pair. Run and score evals in isolated fresh sessions, one per judge — by hand, or unattended through `scripts/eval-batch.mjs`, which fixes each session's configuration and records it with the session's cost — in a run, sealed by freeze. Real or sensitive holdout benchmarks stay outside the public repository, are passed to the harness with `--suite <path>`, and run against a pinned public commit.
+The rubric itself lives in `evals/RUBRIC.md`. Whether contradictory evidence changes the analysis is measured directly rather than judged: a frozen run can be forked, shown evidence it never saw, and its second decision checked by script against its own preregistration or against a planted reveal pair. Run and score evals in isolated fresh sessions, one per judge — by hand, or unattended through `scripts/eval-batch.mjs`, which fixes each session's configuration and records it with the session's cost — in a run, sealed by freeze. Real or sensitive holdout benchmarks stay outside the public repository, are passed to the harness with `--suite <path>`, and run against a pinned public commit. `scripts/eval-bare.mjs` gives the same case and reveal pair to Claude without Venture OS and scores only what a pair verdict reads: each arm's decision and their order. It cannot show that Venture OS decides better: a Venture OS run commits in advance to the evidence that would change its decision, and a pair written before the run cannot target that evidence.
 
-## 11. v0.1 success criteria
+## 11. Success criteria
 
 The technical public-launch gate is complete. The current success criterion is external usage quality, not repository attention.
 
