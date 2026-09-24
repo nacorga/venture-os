@@ -109,7 +109,7 @@ npm run eval:compare -- <run-a> <run-b>
 npm run eval:compare -- --unblind <compare-id>
 npm run eval:summary -- [--runs <dir>] [--compare <dir>] [--bare <dir>] [--case <id>]
 node scripts/eval-batch.mjs <run|score|compare> ... --model <model> --effort <level>
-node scripts/eval-bare.mjs <case>... --model <model> --effort <level> [--suite <path>] [--reps <n>]
+node scripts/eval-bare.mjs <case>... --model <model> --effort <level> [--suite <path>] [--pair P001] [--reps <n>] [--jobs <n>]
 ```
 
 These are implementation primitives, not a second human workflow to memorize.
@@ -194,7 +194,7 @@ Comparing two runs of the same framework (an A/A comparison) is how the noise of
 
 ### Against plain Claude
 
-Whether Venture OS is worth using is a comparison against Claude asked plainly, on the same case and the same planted pair:
+To compare how often Venture OS and Claude without it keep a pair in order, `eval-bare.mjs` gives the same case and the same planted pair to Claude with no Venture OS loaded:
 
 ```bash
 node scripts/eval-bare.mjs <case>... --model <model> --effort <level> [--suite <path>] [--pair P001] [--reps <n>] [--jobs <n>]
@@ -202,7 +202,13 @@ node scripts/eval-bare.mjs <case>... --model <model> --effort <level> [--suite <
 
 One session gets the case's title and statement, researches as it judges useful and ends with a `DECISION:` line; each arm of the pair continues a copy of that session (`--resume --fork-session`) with the arm's summary and items, and decides again. The session runs in a working directory outside this checkout, so no Venture OS instruction, skill or agent loads, under the unattended runner's configuration otherwise — same model and effort, research tools, `dontAsk`, no operator instructions, plugins or MCP servers. Its record, `evals/bare/<id>/result.json` (gitignored), holds the prompts, each phase's answer and telemetry, and the verdict a pair verdict would give: each arm's outcome against the pair's expectations, and the order between the arms. Traps are not scored — a plain answer keeps no evidence records — so the comparison is on decisions alone. The first phase's outcome is not scored either: nothing here says which gate a case deserves.
 
- across frozen runs — judged items with their spread, mechanical verdicts, pair verdicts, bare runs, unblinded comparisons, session telemetry and fact-sheet alarms — and prints one report. `--runs`, `--compare` and `--bare` point it at an archive, such as a private suite's.
+This measures whether a decision moves the way the pair expects, not whether either decision is right. It cannot show that Venture OS decides better: a Venture OS run commits in advance to the evidence that would change its decision, and a pair written before the run cannot target that evidence.
+
+The v0.3.0 result did not meet the preregistered criterion — Venture OS keeping pairs in order at least 20 percentage points more often than plain Claude, with no inversion. Venture OS kept 7 of 15 pairs in order (47%) and inverted none; plain Claude kept 15 of 21 (71%) and inverted one. Six of Venture OS's eight ties were judged defensible: the pair's decisive fact bore on something the run had already set aside.
+
+### Summary report
+
+`npm run eval:summary` reads every record described above — judged items with their spread, mechanical verdicts, pair verdicts, bare runs, unblinded comparisons, session telemetry and fact-sheet alarms — and prints one report. `--runs`, `--compare` and `--bare` point it at an archive, such as a private suite's.
 
 ## Private benchmark boundary
 

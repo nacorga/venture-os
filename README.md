@@ -1,7 +1,7 @@
 # Venture OS
 
 <p align="center">
-  <img src="./assets/venture-os-hero.png" alt="Venture OS — Evidence-first operating system for business ideas" width="100%" />
+  <img src="./assets/venture-os-hero.png" alt="Venture OS for Claude Code — Stop validating your idea. Try to break it. Idea, research, challenge and decision, branching to PROCEED, TEST or PARK." width="100%" />
 </p>
 
 An open-source, evidence-first operating system for turning business ideas into tested decisions with AI agents.
@@ -127,9 +127,9 @@ See [`evals/README.md`](evals/README.md) and [`docs/PUBLICATION.md`](docs/PUBLIC
 
 ## Feedback and hosted interest
 
-Venture OS v0.1 prioritizes **completed workflows** over attention metrics. The useful signals are whether someone creates a venture, reaches a decision, designs or executes an experiment, and changes a real next action.
+Venture OS prioritizes **completed workflows** over attention metrics. The useful signals are whether someone creates a venture, reaches a decision, designs or executes an experiment, and changes a real next action.
 
-There is no hidden usage telemetry required for v0.1. Feedback is explicit and user-submitted through GitHub Issues or Discussions. See [`docs/FEEDBACK.md`](docs/FEEDBACK.md).
+There is no hidden usage telemetry. Feedback is explicit and user-submitted through GitHub Issues or Discussions. See [`docs/FEEDBACK.md`](docs/FEEDBACK.md).
 
 If a hosted version would remove meaningful workflow pain for you, use the **Workflow feedback** issue form and select `Yes` or `Maybe` for hosted-version interest. No mailing-list signup is required.
 
@@ -152,6 +152,7 @@ Start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - `evals/schemas/` — the format of reveal pairs.
 - `evals/runs/` — generated benchmark executions.
 - `evals/compare/` — generated blind pairwise comparisons.
+- `evals/bare/` — generated plain-Claude comparison records.
 - `scripts/` — deterministic mechanics; business judgment remains with agents and humans.
 - `test/` — deterministic regression tests for repository contracts.
 
@@ -189,7 +190,7 @@ GitHub stars and forks are secondary signals. Completed decision and experiment 
 
 ## Release status
 
-`v0.1.0` is the first public release. The public repository was initialized from a sanitized root history; private development history and real/sensitive benchmark material remain outside it.
+The latest release is on [GitHub Releases](https://github.com/nacorga/venture-os/releases); `v0.1.0` was the first public release. The public repository was initialized from a sanitized root history; private development history and real/sensitive benchmark material remain outside it.
 
 The technical launch gate is complete. The current validation gate is external usage: at least 10 people who did not build Venture OS should attempt the Quickstart without live guidance. See [`docs/LAUNCH_CHECKLIST.md`](docs/LAUNCH_CHECKLIST.md).
 
