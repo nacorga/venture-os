@@ -91,6 +91,7 @@ for (const sub of ['research', 'decisions', 'experiments', 'learning']) {
 if (parent) {
   const date = new Date().toISOString().slice(0, 10);
   fs.writeFileSync(path.join(ventureDir, 'venture.yaml'), ventureSkeleton({ slug: caseName, idea: input, date, evidence: inherited }));
+  parent.venture_sha256 = sha256File(path.join(ventureDir, 'venture.yaml'));
 }
 
 const git = gitProvenance(root);

@@ -635,6 +635,10 @@ test('eval:new --from inherits only from a frozen run and records its digest', (
 
   const metadata = JSON.parse(fs.readFileSync(path.join(childDir, 'metadata.json'), 'utf8'));
   const marker = JSON.parse(fs.readFileSync(path.join(runDir, 'FROZEN.json'), 'utf8'));
-  assert.deepEqual(metadata.parent, { run_id: runId, sha256: marker.sha256 });
+  assert.deepEqual(metadata.parent, {
+    run_id: runId,
+    sha256: marker.sha256,
+    venture_sha256: sha256File(path.join(childDir, 'venture', 'venture.yaml')),
+  });
   assertInherited(YAML.parse(fs.readFileSync(path.join(childDir, 'venture', 'venture.yaml'), 'utf8')).evidence_index, `run:${runId}`);
 });
