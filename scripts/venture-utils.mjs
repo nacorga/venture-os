@@ -141,3 +141,65 @@ export function parseDecisionProjection(source) {
     errors: validated.errors,
   };
 }
+
+// Evidence a new venture carries from the venture it reframes: every record
+// the parent did not supersede, unlinked and neutral, because its direction
+// was stated against the parent's assumptions. Linking one again goes through
+// the segment rule like any other record.
+export function inheritEvidence(parentVentureDir, parentLabel) {
+  const parsed = validateVentureFile(path.join(parentVentureDir, 'venture.yaml'));
+  if (!parsed.valid) throw new Error(`Parent venture is invalid: ${parsed.errors.join('; ')}`);
+  return parsed.value.evidence_index
+    .filter((record) => !record.superseded_by)
+    .map((record) => ({
+      ...record,
+      direction: 'neutral',
+      assumption_ids: [],
+      transport_justification: null,
+      inherited_from: parentLabel,
+    }));
+}
+
+export function ventureSkeleton({ slug, idea, date, evidence = [] }) {
+  const evidenceIndex = evidence.length ? `\n${YAML.stringify(evidence, { lineWidth: 0 })}` : ' []\n';
+  return `version: 2
+name: "${slug.replaceAll('-', ' ')}"
+slug: "${slug}"
+created_at: "${date}"
+updated_at: "${date}"
+stage: concept
+
+idea: ${JSON.stringify(idea)}
+
+thesis:
+  problem: ""
+  icp: ""
+  solution: ""
+  business_model: ""
+  distribution: ""
+
+alternatives: []
+assumptions: []
+risks: []
+evidence_index:${evidenceIndex}
+latest_decision:
+  id: null
+  outcome: null
+  path: null
+  snapshot: null
+
+blocking_assumptions: []
+blocking_deferrals: []
+do_not_build: []
+next_action:
+  id: N001
+  type: normalize
+  assumption_id: null
+  instruction: "Normalize this idea into explicit critical assumptions before research."
+  success_signal: null
+  failure_signal: null
+  depends_on: []
+revisit_when: []
+reopen_combination_rule: null
+`;
+}

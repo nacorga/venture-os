@@ -28,7 +28,7 @@ Eval runs may intentionally use a directory under `evals/runs/<run-id>/venture/`
    - `decisions/`
    - `experiments/`
    - `learning/`
-3. Create or normalize `venture.yaml` using the version 2 template.
+3. Create or normalize `venture.yaml` using the version 2 template. Keep any records in `evidence_index` that carry `inherited_from`: they are the parent venture's evidence (`framework/evidence-standard.md` § Inherited evidence). Read them before step 6, so the assumptions are written knowing what the parent already established.
 4. Convert the idea into:
    - problem hypothesis;
    - primary ICP hypothesis;

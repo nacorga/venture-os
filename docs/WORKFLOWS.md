@@ -179,13 +179,13 @@ Real or sensitive holdout benchmarks stay outside the public repository and shou
 Scripts exist for deterministic mechanics and automation. Use them when debugging or integrating Venture OS programmatically, not because the user must memorize another workflow.
 
 ```bash
-npm run venture:new -- <slug> "<idea>"
+npm run venture:new -- <slug> "<idea>" [--from <parent-venture-dir>]
 npm run venture:check -- <slug>
 npm run evidence:check -- <venture-dir>
 npm run experiment:lock -- <experiment-dir|experiment.yaml>
 npm run case:new -- <id> "<title>" "<statement>" <category>
 npm run case:validate -- [<case-id|path>]
-npm run eval:new -- <case> <model-label> [--suite <path>]
+npm run eval:new -- <case> <model-label> [--suite <path>] [--from <frozen-run-dir>]
 npm run eval:freeze -- <run-id> [--suite <path>]
 npm run eval:verify -- <run-id>
 npm run eval:fork -- <run-id> --arm <arm> [--rep <n>] [--suite <path>] [--model-label <label>] [--cross-framework]
