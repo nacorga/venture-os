@@ -26,6 +26,7 @@ During this skill:
 - read only the active run's `case.yaml`, its own artifacts, relevant framework files, agents, and normal Venture OS skills;
 - never read `evals/reference/`;
 - never inspect git history, prior eval runs, or other Case Library entries for expected answers;
+- evidence records carrying `inherited_from` in the run's own `venture.yaml` are part of the run's input, placed there by `eval:new --from`; they are not a prior run to inspect;
 - external market research is allowed;
 - if reference expectations are already present in context, stop and report the run as contaminated instead of continuing.
 

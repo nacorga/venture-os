@@ -99,7 +99,7 @@ Sessions run one at a time unless `--jobs` says otherwise; parallel sessions sha
 ### Low-level primitives
 
 ```bash
-npm run eval:new -- <case> <model-label> [--suite <path>]
+npm run eval:new -- <case> <model-label> [--suite <path>] [--from <frozen-run-dir>]
 npm run evidence:check -- evals/runs/<run-id>/venture
 npm run eval:freeze -- <run-id> [--suite <path>]
 npm run eval:verify -- <run-id>

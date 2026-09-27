@@ -299,9 +299,17 @@ function changedFiles(before, after) {
 // The only state a session may start from is what eval:new or eval:fork left:
 // a session that ran, by hand or here, leaves partial state a second session
 // would read, so a run is never resumed — it is replaced by a new one.
-function startingStateProblems(runsDir, runDir, forkKey) {
+function startingStateProblems(runsDir, runDir, forkKey, metadata) {
   const venture = hashPathSet(runDir, ['venture']);
-  if (!forkKey) return venture.files.length ? ['its venture/ already holds files: a session already worked on it'] : [];
+  if (!forkKey) {
+    // eval:new --from seeds venture.yaml with the parent's evidence and records its hash.
+    const seed = metadata?.parent?.venture_sha256;
+    const seedPath = path.join(runDir, 'venture', 'venture.yaml');
+    const untouched = seed
+      ? venture.files.length === 1 && fs.existsSync(seedPath) && sha256File(seedPath) === seed
+      : venture.files.length === 0;
+    return untouched ? [] : ['its venture/ already holds files: a session already worked on it'];
+  }
   const parentDir = path.join(runsDir, forkKey.parent.run_id);
   if (!fs.existsSync(parentDir)) return [`its parent ${forkKey.parent.run_id} is not under evals/runs/`];
   const parent = verifyFrozenRun(parentDir);
@@ -351,8 +359,8 @@ function runPlan(root, runId, suitePath) {
   if (fs.existsSync(path.join(runDir, 'RESULT.md'))) problems.push('it already has a RESULT.md: a session already completed it');
   const forkKey = readForkKey(runsDir, runId);
   if (!forkKey && looksForked(runDir)) problems.push('it carries a fork\'s files but has no fork key in evals/runs/.keys/');
-  problems.push(...startingStateProblems(runsDir, runDir, forkKey));
   const metadata = readJson(path.join(runDir, 'metadata.json'));
+  problems.push(...startingStateProblems(runsDir, runDir, forkKey, metadata));
   if (!metadata?.provenance?.framework_sha256 || !metadata.provenance.case_sha256) problems.push('metadata.json has no creation provenance');
   else problems.push(...freezeBlockers(root, runDir, metadata, suitePath, forkKey));
 

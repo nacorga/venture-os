@@ -94,6 +94,10 @@ The replacement evidence ID must then be propagated to every assumption whose `e
 
 Run the repository's evidence consistency check after creating a supersession and before a gate decision.
 
+## Inherited evidence
+
+A venture that reframes another (`venture:new --from`, `eval:new --from`) starts with every record its parent did not supersede, under the parent's IDs and with `inherited_from` naming the parent. Each enters unlinked and `neutral`: its direction was stated against the parent's assumptions, not these. Research reads them before searching and links the ones that bear on the new assumptions, setting direction then; the segment rule applies as to any record, so a finding about the parent's buyer reaches a new segment only with a `transport_justification`. An inherited record is not re-researched to confirm it, and it is audited and superseded like any other.
+
 ## Freshness
 
 Pricing, regulation, platform capabilities, competitor features, and market statistics can age quickly. Preserve dates.

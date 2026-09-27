@@ -369,3 +369,28 @@ test('a comparison judge runs no script and cannot judge an unblinded comparison
   assert.notEqual(unblinded.status, 0);
   assert.match(unblinded.stderr, /already unblinded/);
 });
+
+test('a run seeded by eval:new --from starts only while its seed is untouched', (t) => {
+  const fake = scratch(t);
+  const parent = frozenByBatch(t, fake);
+  fs.rmSync(fake.log);
+  const child = () => {
+    runSequence += 1;
+    const created = runScript('new-eval-run.mjs', [caseId, `batch-from-${process.pid}-${runSequence}`, '--from', parent.runDir]);
+    assert.equal(created.status, 0, created.stderr);
+    const runId = created.stdout.match(/^Created evals\/runs\/(\S+)$/m)[1];
+    t.after(() => fs.rmSync(path.join(runsDir, runId), { recursive: true, force: true }));
+    return { runId, runDir: path.join(runsDir, runId) };
+  };
+  const edited = child();
+  fs.appendFileSync(path.join(edited.runDir, 'venture', 'venture.yaml'), '# edited\n');
+  const refused = batch(fake, ['run', edited.runId]);
+  assert.notEqual(refused.status, 0);
+  assert.match(refused.stderr, new RegExp(`${edited.runId}: its venture/ already holds files`));
+  assert.equal(fs.existsSync(fake.log), false, 'no session was started');
+
+  const seeded = child();
+  const result = batch(fake, ['run', seeded.runId], { FAKE_FIXTURE: completedRunFixture(fake.dir) });
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.equal(fs.existsSync(path.join(seeded.runDir, 'FROZEN.json')), true);
+});

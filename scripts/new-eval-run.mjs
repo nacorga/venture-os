@@ -7,11 +7,13 @@ import {
   gitProvenance,
   runtimeProvenance,
   sha256File,
+  verifyFrozenRun,
 } from './eval-provenance.mjs';
+import { inheritEvidence, ventureSkeleton } from './venture-utils.mjs';
 
 let args;
 try {
-  args = parseArgs({ allowPositionals: true, options: { suite: { type: 'string' } } });
+  args = parseArgs({ allowPositionals: true, options: { suite: { type: 'string' }, from: { type: 'string' } } });
 } catch (error) {
   console.error(error.message);
   process.exit(1);
@@ -19,7 +21,7 @@ try {
 const [caseName, modelLabel = 'manual'] = args.positionals;
 
 if (!caseName || !/^[a-z0-9-]+$/.test(caseName)) {
-  console.error('Usage: npm run eval:new -- <case> [model-label] [--suite <path>]');
+  console.error('Usage: npm run eval:new -- <case> [model-label] [--suite <path>] [--from <frozen-run-dir>]');
   process.exit(1);
 }
 
@@ -48,6 +50,26 @@ const casePath = caseResult.casePath;
 const caseContent = fs.readFileSync(casePath, 'utf8');
 const input = caseResult.value.statement;
 
+// A reframe starts from its parent's evidence, as `venture:new --from` does,
+// and only from a frozen run: the parent's digest is what the child records.
+let parent = null;
+let inherited = [];
+if (args.values.from) {
+  const parentDir = path.resolve(args.values.from);
+  const verified = verifyFrozenRun(parentDir);
+  if (!verified.ok) {
+    console.error(`Parent run must be frozen and verified: ${verified.errors.join('; ')}`);
+    process.exit(1);
+  }
+  parent = { run_id: path.basename(parentDir), sha256: verified.digest };
+  try {
+    inherited = inheritEvidence(path.join(parentDir, 'venture'), `run:${parent.run_id}`);
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+}
+
 const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 const runId = `${stamp}-${caseName}-${modelLabel}`;
 const runDir = path.join(root, 'evals', 'runs', runId);
@@ -66,6 +88,11 @@ try {
 for (const sub of ['research', 'decisions', 'experiments', 'learning']) {
   fs.mkdirSync(path.join(ventureDir, sub), { recursive: true });
 }
+if (parent) {
+  const date = new Date().toISOString().slice(0, 10);
+  fs.writeFileSync(path.join(ventureDir, 'venture.yaml'), ventureSkeleton({ slug: caseName, idea: input, date, evidence: inherited }));
+  parent.venture_sha256 = sha256File(path.join(ventureDir, 'venture.yaml'));
+}
 
 const git = gitProvenance(root);
 const runtime = runtimeProvenance(root);
@@ -80,6 +107,7 @@ fs.writeFileSync(
     case_schema_version: caseResult.value.schema_version,
     model_label: modelLabel,
     ...(suite.label ? { suite: { label: suite.label } } : {}),
+    ...(parent ? { parent } : {}),
     created_at: new Date().toISOString(),
     commit: git.commit,
     status: 'CREATED',
@@ -99,5 +127,6 @@ fs.writeFileSync(path.join(runDir, 'RUN.md'), prompt);
 console.log(`Created evals/runs/${runId}`);
 console.log(`Framework sha256: ${runtime.framework_sha256}`);
 if (suite.label) console.log(`Suite: ${suite.label}`);
+if (parent) console.log(`Inherited ${inherited.length} evidence records from ${parent.run_id}`);
 if (git.dirty) console.log('Note: git worktree is dirty; effective runtime hash is recorded in metadata.json.');
 console.log(`Fresh Claude Code session: /eval-run ${runId}`);

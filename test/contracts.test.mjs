@@ -17,6 +17,7 @@ import {
   runtimeProvenance,
   sha256File,
 } from '../scripts/eval-provenance.mjs';
+import { validateVentureFile } from '../scripts/venture-utils.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let sequence = 0;
@@ -567,4 +568,77 @@ test('eval:new refuses to reuse an existing run ID', (t) => {
   for (const runDir of occupied) {
     assert.deepEqual(fs.readdirSync(runDir), ['RESULT.md']);
   }
+});
+
+function inheritableRecords() {
+  return [
+    { id: 'E001', type: 'primary_external', statement: 'A kept finding.', source: 'https://example.com/a', direction: 'contradicts', strength: 'medium', segment: 'parent-segment', transport_justification: 'Parent-only reason.', assumption_ids: ['A001'] },
+    { id: 'E002', type: 'primary_external', statement: 'A corrected finding.', source: 'https://example.com/b', direction: 'supports', strength: 'weak', assumption_ids: ['A001'], superseded_by: 'E003' },
+    { id: 'E003', type: 'primary_external', statement: 'Its correction.', source: 'https://example.com/b', direction: 'mixed', strength: 'weak', assumption_ids: [] },
+  ];
+}
+
+function assertInherited(evidence, parentLabel) {
+  assert.deepEqual(evidence.map((record) => record.id), ['E001', 'E003']);
+  for (const record of evidence) {
+    assert.equal(record.direction, 'neutral');
+    assert.deepEqual(record.assumption_ids, []);
+    assert.equal(record.transport_justification, null);
+    assert.equal(record.inherited_from, parentLabel);
+  }
+  assert.equal(evidence[0].statement, 'A kept finding.');
+  assert.equal(evidence[0].segment, 'parent-segment');
+}
+
+test('venture:new --from carries the parent venture\'s live evidence, unlinked', (t) => {
+  const parent = uniqueId('test-parent');
+  const child = uniqueId('test-child');
+  const parentDir = path.join(repoRoot, 'ventures', parent);
+  t.after(() => {
+    fs.rmSync(parentDir, { recursive: true, force: true });
+    fs.rmSync(path.join(repoRoot, 'ventures', child), { recursive: true, force: true });
+  });
+  assert.equal(runScript('new-venture.mjs', parent, 'Parent idea').status, 0);
+  const parentState = YAML.parse(fs.readFileSync(path.join(parentDir, 'venture.yaml'), 'utf8'));
+  parentState.evidence_index = inheritableRecords();
+  fs.writeFileSync(path.join(parentDir, 'venture.yaml'), YAML.stringify(parentState));
+
+  const result = runScript('new-venture.mjs', child, 'Reframed idea', '--from', `ventures/${parent}`);
+  assert.equal(result.status, 0, result.stderr);
+  const statePath = path.join(repoRoot, 'ventures', child, 'venture.yaml');
+  assert.equal(validateVentureFile(statePath).valid, true);
+  assertInherited(YAML.parse(fs.readFileSync(statePath, 'utf8')).evidence_index, `ventures/${parent}`);
+  const check = runScript('check-venture-integrity.mjs', `ventures/${child}`);
+  assert.equal(check.status, 0, check.stderr);
+});
+
+test('eval:new --from inherits only from a frozen run and records its digest', (t) => {
+  const { runId, runDir } = createEvalRun(t);
+  const statePath = path.join(runDir, 'venture', 'venture.yaml');
+  const state = YAML.parse(fs.readFileSync(statePath, 'utf8'));
+  // The fixture run has no assumptions, so its records are unlinked already.
+  state.evidence_index = inheritableRecords().map((record) => ({ ...record, assumption_ids: [] }));
+  fs.writeFileSync(statePath, YAML.stringify(state));
+
+  const label = `from-${process.pid}`;
+  const refused = runScript('new-eval-run.mjs', 'inventory-monitoring-saas', label, '--from', runDir);
+  assert.notEqual(refused.status, 0);
+  assert.match(refused.stderr, /Parent run must be frozen/);
+
+  const freeze = runScript('freeze-eval-run.mjs', runId);
+  assert.equal(freeze.status, 0, `${freeze.stdout}\n${freeze.stderr}`);
+  const created = runScript('new-eval-run.mjs', 'inventory-monitoring-saas', label, '--from', runDir);
+  assert.equal(created.status, 0, created.stderr);
+  const childId = created.stdout.match(/Created evals\/runs\/(\S+)/)[1];
+  const childDir = path.join(repoRoot, 'evals', 'runs', childId);
+  t.after(() => fs.rmSync(childDir, { recursive: true, force: true }));
+
+  const metadata = JSON.parse(fs.readFileSync(path.join(childDir, 'metadata.json'), 'utf8'));
+  const marker = JSON.parse(fs.readFileSync(path.join(runDir, 'FROZEN.json'), 'utf8'));
+  assert.deepEqual(metadata.parent, {
+    run_id: runId,
+    sha256: marker.sha256,
+    venture_sha256: sha256File(path.join(childDir, 'venture', 'venture.yaml')),
+  });
+  assertInherited(YAML.parse(fs.readFileSync(path.join(childDir, 'venture', 'venture.yaml'), 'utf8')).evidence_index, `run:${runId}`);
 });
