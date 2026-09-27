@@ -116,6 +116,7 @@ context:
   audience: Independent retailers operating one to five stores
   geography: Spain
   business_model_notes: Monthly subscription priced per store
+  operator_threshold: €10,000 gross profit a year by year two
   constraints:
     - Must work with incomplete inventory data
     - Initial setup should not require ERP replacement
@@ -197,6 +198,7 @@ Optional structured context with:
 - `audience`
 - `geography`
 - `business_model_notes`
+- `operator_threshold` — the smallest outcome the operator would pursue, with amount, unit and horizon; copied into the venture's `operator_threshold` (`framework/gates.md` § Operator threshold)
 - `constraints[]`
 
 Only include facts intentionally supplied to the system as part of the starting state.

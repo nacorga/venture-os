@@ -24,6 +24,10 @@ Assumptions that remain unresolved.
 
 List the decision-time `blocking_assumptions`. Identify the one targeted by the decision-time `next_action.assumption_id`. For every additional blocker, copy its decision-time deferral reason (and `until` when present).
 
+## Operator threshold
+
+When `operator_threshold` is set: the threshold, the plausible ceiling with the evidence or assumption ID behind each factor, and which side of the threshold it falls (`framework/gates.md` § Operator threshold). When it is null and the outcome turns on scale: the ceiling current evidence supports, and that the threshold is missing. Otherwise: "Not applicable".
+
 ## Rationale
 
 Concise explanation of why this outcome is justified now.

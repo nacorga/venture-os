@@ -28,6 +28,17 @@ A PARK outcome must record:
 - whether the problem, ICP, business model, or timing is the likely issue;
 - what evidence would justify reopening the venture.
 
+## Operator threshold
+
+`operator_threshold` in `venture.yaml` is the smallest outcome the operator would pursue: an amount, a unit and a horizon, in the operator's words (for example "€10,000 gross profit a year by year two, at five hours a week or less"). It is the operator's decision, not a finding: it comes from the operator or the case, never from research, and a gate never invents, raises or lowers it.
+
+When it is set, every gate states the plausible ceiling: the most optimistic reading of each factor that current evidence still supports, multiplied out, with the evidence or assumption ID behind each factor. Then:
+
+- ceiling below the threshold → PARK, whatever tests remain open: no experiment result can lift an outcome above a ceiling its own factors cap. The PARK names the factor that caps it and a revisit trigger for the evidence that would raise that factor;
+- ceiling at or above the threshold → the threshold decides nothing, and the gate proceeds on the other questions.
+
+When it is null and the outcome would turn on scale (the venture works, but might be too small to be worth it), the gate does not assume a scale for the operator. It records the ceiling it can support and names the missing threshold under open questions, so the operator can close it.
+
 ## Gate review questions
 
 1. Is the problem demonstrated or merely plausible?
@@ -40,6 +51,7 @@ A PARK outcome must record:
 8. What is the most dangerous unknown?
 9. Is the proposed next step the cheapest way to learn about it?
 10. What should we explicitly not build yet?
+11. When `operator_threshold` is set, does the plausible ceiling reach it?
 
 ## No aggregate score
 

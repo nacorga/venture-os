@@ -179,6 +179,7 @@ thesis:
   distribution: ""
 
 alternatives: []
+operator_threshold: null
 assumptions: []
 risks: []
 evidence_index:${evidenceIndex}

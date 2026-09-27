@@ -22,11 +22,14 @@ A PARK decision means current evidence does not justify further investment now. 
 
 When the decision follows a completed experiment, start from the gate outcome its locked decision rule assigns to the recorded result branch. Depart from it only on evidence the preregistration did not anticipate, and name that evidence. Enthusiasm, activity or a near miss is what the preregistration was written to discount.
 
+When `operator_threshold` is set in `venture.yaml`, apply `framework/gates.md` § Operator threshold before anything else: a plausible ceiling below it is a PARK, whatever tests remain open. When it is null, never assume a scale on the operator's behalf.
+
 For every decision, provide:
 - decision;
 - decisive evidence IDs;
 - contradictory evidence IDs;
 - critical assumptions still open;
+- the plausible ceiling against `operator_threshold`, when it is set or the outcome turns on scale;
 - why the current stage should or should not advance;
 - one primary next action;
 - explicit do-not-build items;
