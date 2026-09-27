@@ -39,14 +39,16 @@ Eval runs may intentionally use a directory under `evals/runs/<run-id>/venture/`
 5. Before writing ICP-scoped assumptions, inspect whether the proposed primary ICP bundles two or more populations that could differ on the quantities the assumptions will turn on (for example buying process, campaign cadence, data availability, price sensitivity, regulation, operational workflow, or retention). If so, either split them into distinct segment labels or record in the thesis why treating them as one segment is causally justified. Do not use one broad `primary-icp` label merely for convenience.
 6. Extract 3–7 critical assumptions. Prefer assumptions that could kill the venture if false. Add `segment` whenever the assumption is population- or context-specific and use the decomposed segment labels from step 5.
 7. Mark all unverified claims as assumptions, not facts.
-8. Set stage to `concept`.
-9. Replace the bootstrap action with one structured `next_action` (`N###`) targeting the most important assumption and research step. Keep one primary instruction; use `success_signal` and `failure_signal` only where they can be meaningfully pre-registered. Keep `depends_on: []`; version 2 does not preserve an action graph, so dependencies on historical `N###` IDs are not representable.
-10. Keep `blocking_assumptions`, `blocking_deferrals`, `do_not_build`, and `revisit_when` empty unless this step has a concrete reason to populate them; when guardrails are populated they require stable IDs.
+8. Set `operator_threshold` to the smallest outcome the operator would pursue, with amount, unit and horizon (`framework/gates.md` § Operator threshold). Take it from the operator's own words or the case's `context.operator_threshold`. In an interactive session where neither states it, ask once; if the operator declines, or no one can be asked, leave it `null`. Never infer it.
+9. Set stage to `concept`.
+10. Replace the bootstrap action with one structured `next_action` (`N###`) targeting the most important assumption and research step. Keep one primary instruction; use `success_signal` and `failure_signal` only where they can be meaningfully pre-registered. Keep `depends_on: []`; version 2 does not preserve an action graph, so dependencies on historical `N###` IDs are not representable.
+11. Keep `blocking_assumptions`, `blocking_deferrals`, `do_not_build`, and `revisit_when` empty unless this step has a concrete reason to populate them; when guardrails are populated they require stable IDs.
 
 ## Do not
 
 - perform a full market study in this skill;
 - invent TAM, pricing, traction, or customer pain;
+- infer the operator's threshold from the idea;
 - recommend building software;
 - assign a numeric venture score;
 - write free-text or multi-action `next_action` state;

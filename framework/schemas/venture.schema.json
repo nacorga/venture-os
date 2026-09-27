@@ -93,6 +93,7 @@
     },
     "assumptions": { "type": "array", "items": { "$ref": "https://venture-os.dev/schemas/assumption-v1.schema.json" } },
     "evidence_index": { "type": "array", "items": { "$ref": "https://venture-os.dev/schemas/evidence-v1.schema.json" } },
+    "operator_threshold": { "type": ["string", "null"], "minLength": 1 },
     "latest_decision": {
       "type": "object",
       "required": ["id", "outcome", "path", "snapshot"],

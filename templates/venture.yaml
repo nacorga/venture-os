@@ -14,6 +14,10 @@ thesis:
 
 alternatives: []
 
+# The smallest outcome the operator would pursue, in their words, with amount, unit and
+# horizon (framework/gates.md § Operator threshold). null until the operator states one.
+operator_threshold: null
+
 assumptions: []
 # Example:
 # - id: A001

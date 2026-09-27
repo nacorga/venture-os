@@ -17,7 +17,7 @@ import {
   runtimeProvenance,
   sha256File,
 } from '../scripts/eval-provenance.mjs';
-import { validateVentureFile } from '../scripts/venture-utils.mjs';
+import { validateVentureFile, validateVentureObject } from '../scripts/venture-utils.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let sequence = 0;
@@ -589,6 +589,18 @@ function assertInherited(evidence, parentLabel) {
   assert.equal(evidence[0].statement, 'A kept finding.');
   assert.equal(evidence[0].segment, 'parent-segment');
 }
+
+test('operator_threshold starts null and accepts only the operator\'s words', (t) => {
+  const slug = uniqueId('test-threshold');
+  const dir = path.join(repoRoot, 'ventures', slug);
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  assert.equal(runScript('new-venture.mjs', slug, 'An idea').status, 0);
+  const state = YAML.parse(fs.readFileSync(path.join(dir, 'venture.yaml'), 'utf8'));
+  assert.equal(state.operator_threshold, null);
+  assert.equal(validateVentureObject({ ...state, operator_threshold: '€10,000 gross profit a year by year two' }).valid, true);
+  assert.equal(validateVentureObject({ ...state, operator_threshold: 10000 }).valid, false);
+  assert.equal(validateVentureObject({ ...state, operator_threshold: '' }).valid, false);
+});
 
 test('venture:new --from carries the parent venture\'s live evidence, unlinked', (t) => {
   const parent = uniqueId('test-parent');
